@@ -13,4 +13,3 @@ export function Connect() {
     </div>
   );
 }
-;

@@ -1,28 +1,27 @@
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Connect } from "./ConnectButton";
-
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Connect } from './ConnectButton';
 
 export function Header() {
-
   return (
     <header className="border-b">
-      <div className="flex h-14 items-center px-4 mx-auto bg-header">
-        <div className="border-r h-full flex items-center pr-4">
+      <div className="bg-header mx-auto flex h-14 items-center px-4">
+        <div className="flex h-full items-center border-r pr-4">
           <Link href="/" className="flex items-center gap-2 font-semibold">
             <span className="text-xl">SonicSwap</span>
           </Link>
         </div>
 
-        <nav className="mx-6 hidden md:flex items-center space-x-4 lg:space-x-6 flex-1">
+        <nav className="mx-6 hidden flex-1 items-center space-x-4 md:flex lg:space-x-6">
           <Button asChild variant="ghost">
-            <Link href="/chat" className="text-sm font-semibold">Chat</Link>
+            <Link href="/chat" className="text-sm font-semibold">
+              Chat
+            </Link>
           </Button>
         </nav>
         <div className="flex items-center">
           <Connect />
         </div>
-
       </div>
     </header>
   );

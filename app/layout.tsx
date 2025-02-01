@@ -1,7 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import "./globals.css";
-import { Header } from "@/components/Header";
+import './globals.css';
+import { Header } from '@/components/Header';
 import { Providers } from '@/providers';
 import '@rainbow-me/rainbowkit/styles.css';
 
@@ -15,32 +15,26 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "AppKit Example App",
-  description: "Powered by WalletConnect"
+  title: 'SonicSwap AI Chat Agent',
+  description: 'AI assistant for SonicSwap - helping you navigate DeFi trading, swaps, and blockchain interactions with natural conversation.',
 };
 
 export default async function RootLayout({
-  children
+  children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
-
   return (
-    <html lang="en" className={`${inter.variable} font-sans dark`} suppressHydrationWarning={true}>
-      <head>
-      </head>
+    <html lang="en" className={`${inter.variable} dark font-sans`} suppressHydrationWarning={true}>
       <body className={`${inter.className} font-sans`}>
-        <div className="min-h-screen flex flex-col relative">
-          <div className="absolute -z-20 bottom-0 left-0 right-0 top-0 bg-[#0a0b1e]" />
+        <div className="relative flex min-h-screen flex-col">
+          <div className="absolute bottom-0 left-0 right-0 top-0 -z-20 bg-[#0a0b1e]" />
           <Providers>
             <Header />
-            <main>
-              {children}
-            </main>
+            <main>{children}</main>
           </Providers>
         </div>
       </body>
     </html>
-  )
+  );
 }
-
