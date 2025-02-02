@@ -4,7 +4,6 @@ import { cookies } from 'next/headers';
 import { generateNonce, SiweMessage } from 'siwe';
 import { supabase } from '@/supabase/server';
 
-
 export async function getNonce() {
   const nonce = generateNonce();
   const cookieStore = await cookies();
@@ -21,14 +20,22 @@ export async function getNonce() {
 
 async function createOrGetUser(walletAddress: string) {
   // First try to get existing user
-  const { data: existingUser, error: fetchError } = await supabase.from('users').select('id').eq('wallet_address', walletAddress).single();
+  const { data: existingUser, error: fetchError } = await supabase
+    .from('users')
+    .select('id')
+    .eq('wallet_address', walletAddress)
+    .single();
 
   if (existingUser) {
     return existingUser.id;
   }
 
   // If user doesn't exist, create new user
-  const { data: newUser, error: insertError } = await supabase.from('users').insert({ wallet_address: walletAddress }).select('id').single();
+  const { data: newUser, error: insertError } = await supabase
+    .from('users')
+    .insert({ wallet_address: walletAddress })
+    .select('id')
+    .single();
 
   if (insertError) {
     throw new Error('Failed to create user');

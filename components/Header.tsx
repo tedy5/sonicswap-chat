@@ -5,7 +5,7 @@ import { ConnectWallet } from './ConnectWallet';
 export function Header() {
   return (
     <header className="border-b">
-      <div className="bg-header mx-auto flex h-14 items-center px-4">
+      <div className="mx-auto flex h-14 items-center bg-header px-4">
         <div className="flex h-full items-center border-r pr-4">
           <Link href="/" className="flex items-center gap-2 font-semibold">
             <span className="text-xl">SonicSwap</span>

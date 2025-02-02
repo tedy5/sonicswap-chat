@@ -3,7 +3,7 @@
   "trailingComma": "es5",
   "singleQuote": true,
   "tabWidth": 2,
-  "printWidth": 240,
+  "printWidth": 80,
   "bracketSpacing": true,
   "arrowParens": "always",
   "singleAttributePerLine": false,
@@ -19,5 +19,15 @@
     "<THIRD_PARTY_MODULES>",
     "^@/(.*)$",
     "^[./]"
+  ],
+  "overrides": [
+    {
+      "files": [
+        "**/*.{tsx,jsx}"
+      ],
+      "options": {
+        "printWidth": 240
+      }
+    }
   ]
 }
