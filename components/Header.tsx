@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Connect } from './ConnectButton';
+import { ConnectWallet } from './ConnectWallet';
 
 export function Header() {
   return (
@@ -20,7 +20,7 @@ export function Header() {
           </Button>
         </nav>
         <div className="flex items-center">
-          <Connect />
+          <ConnectWallet />
         </div>
       </div>
     </header>
