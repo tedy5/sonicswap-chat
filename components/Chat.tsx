@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { createIdGenerator } from 'ai';
 import { Message, useChat } from 'ai/react';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,12 @@ interface ChatProps {
 type MessageContent = string | { type: 'text'; text: string }[] | { type: 'text'; text: string };
 
 export function Chat({ userId, initialMessages, isAuthenticated }: ChatProps) {
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
     id: userId,
     initialMessages,
@@ -27,6 +34,10 @@ export function Chat({ userId, initialMessages, isAuthenticated }: ChatProps) {
     }),
     sendExtraMessageFields: true,
   });
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   console.log('Chat State:', {
     messagesCount: messages.length,
@@ -85,6 +96,7 @@ export function Chat({ userId, initialMessages, isAuthenticated }: ChatProps) {
               </Card>
             </div>
           ))}
+          <div ref={messagesEndRef} />
         </div>
       </div>
 

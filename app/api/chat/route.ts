@@ -1,10 +1,10 @@
 import { cookies } from 'next/headers';
 import { openai } from '@ai-sdk/openai';
 import { appendResponseMessages, createIdGenerator, streamText } from 'ai';
+import { DEFI_ASSISTANT_PROMPT } from '@/config/system-prompts';
 import { tools } from '@/tools/swap-tools';
 import { loadChat, saveChat } from '@/utils/chat-store';
 import { verifySession } from '@/utils/session';
-import { DEFI_ASSISTANT_PROMPT } from '@/config/system-prompts';
 
 const MAX_CONTEXT_MESSAGES = 10;
 
