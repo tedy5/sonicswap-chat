@@ -3,6 +3,11 @@
 import { cookies } from 'next/headers';
 import { generateNonce, SiweMessage } from 'siwe';
 import { supabase } from '@/supabase/server';
+import {
+  createSessionCookie,
+  SESSION_EXPIRY,
+  verifySession,
+} from '@/utils/session';
 
 export async function getNonce() {
   const nonce = generateNonce();
@@ -25,6 +30,10 @@ async function createOrGetUser(walletAddress: string) {
     .select('id')
     .eq('wallet_address', walletAddress)
     .single();
+
+  if (fetchError) {
+    throw new Error('Failed to fetch user');
+  }
 
   if (existingUser) {
     return existingUser.id;
@@ -63,17 +72,16 @@ export async function verifySignature(message: string, signature: string) {
     // Create or get user after successful verification
     const userId = await createOrGetUser(fields.data.address);
 
-    const sessionCookie = JSON.stringify({
+    const sessionToken = await createSessionCookie({
+      userId,
       address: fields.data.address,
-      userId: userId,
-      issuedAt: new Date().toISOString(),
     });
 
-    cookieStore.set('user_session', sessionCookie, {
+    cookieStore.set('user_session', sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 60 * 60 * 24 * 7, // 1 week
+      maxAge: SESSION_EXPIRY,
     });
 
     cookieStore.delete('siwe_nonce');
@@ -84,7 +92,6 @@ export async function verifySignature(message: string, signature: string) {
   }
 }
 
-// Optional: Helper function to check if user is authenticated
 export async function checkAuth() {
   const cookieStore = await cookies();
   const session = cookieStore.get('user_session');
@@ -93,9 +100,6 @@ export async function checkAuth() {
     return null;
   }
 
-  try {
-    return JSON.parse(session.value);
-  } catch {
-    return null;
-  }
+  const { valid, data } = await verifySession(session.value);
+  return valid ? data : null;
 }
