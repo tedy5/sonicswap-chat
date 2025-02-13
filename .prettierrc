@@ -3,10 +3,11 @@
   "trailingComma": "es5",
   "singleQuote": true,
   "tabWidth": 2,
-  "printWidth": 80,
+  "printWidth": 120,
   "bracketSpacing": true,
   "arrowParens": "always",
-  "singleAttributePerLine": false,
+  "singleAttributePerLine": true,
+  "bracketSameLine": false,
   "plugins": [
     "@ianvs/prettier-plugin-sort-imports",
     "prettier-plugin-tailwindcss"
@@ -26,7 +27,7 @@
         "**/*.{tsx,jsx}"
       ],
       "options": {
-        "printWidth": 240
+        "printWidth": 140
       }
     }
   ]
