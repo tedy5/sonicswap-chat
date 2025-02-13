@@ -1,8 +1,9 @@
 import { cookies } from 'next/headers';
 import { openai } from '@ai-sdk/openai';
-import { appendResponseMessages, createIdGenerator, streamText } from 'ai';
+import { appendResponseMessages, createDataStreamResponse, createIdGenerator, streamText } from 'ai';
 import { DEFI_ASSISTANT_PROMPT } from '@/config/system-prompts';
-import { tools } from '@/tools/swap-tools';
+import { bridgeTools } from '@/tools/bridge-tools';
+import { priceTools } from '@/tools/price-tools';
 import { loadChat, saveChat } from '@/utils/chat-store';
 import { verifySession } from '@/utils/session';
 
@@ -25,59 +26,93 @@ export async function POST(req: Request) {
     }
 
     const userId = data.userId;
-
-    // Save the latest user message first
-    const latestMessage = messages[messages.length - 1];
-    if (latestMessage.role === 'user') {
-      await saveChat({
-        userId,
-        messages: [latestMessage],
-      });
-    }
-
-    // Get context messages
     const contextMessages = messages.slice(-MAX_CONTEXT_MESSAGES);
 
-    console.log('Context window:', {
-      totalMessages: messages.length,
-      contextMessages: contextMessages.length,
-      droppedMessages: messages.length - contextMessages.length,
+    console.log('Starting AI request:', {
+      userId,
+      messageCount: contextMessages.length,
+      lastMessageContent: contextMessages[contextMessages.length - 1]?.content,
     });
 
-    const result = streamText({
-      model: openai('gpt-4o-mini'),
-      messages: contextMessages,
-      tools,
-      system: DEFI_ASSISTANT_PROMPT,
-      experimental_generateMessageId: createIdGenerator({
-        prefix: 'assistant',
-        size: 32,
-      }),
-      async onFinish({ response }) {
+    return createDataStreamResponse({
+      execute: async (dataStream) => {
+        console.log('DataStream execution started');
+
         try {
-          const existingMessages = await loadChat(userId);
+          // Save the latest user message first
+          const latestMessage = messages[messages.length - 1];
+          if (latestMessage.role === 'user') {
+            await saveChat({
+              userId,
+              messages: [latestMessage],
+            });
+            console.log('Saved latest user message');
+          }
 
-          const updatedMessages = appendResponseMessages({
-            messages: existingMessages,
-            responseMessages: response.messages,
+          console.log('Initializing streamText');
+          const result = streamText({
+            model: openai('gpt-4o'),
+            messages: contextMessages,
+            tools: {
+              ...bridgeTools,
+              ...priceTools,
+            },
+            system: DEFI_ASSISTANT_PROMPT,
+            experimental_generateMessageId: createIdGenerator({
+              prefix: 'assistant',
+              size: 32,
+            }),
+            onChunk: async (event) => {
+              console.log('AI Chunk received:', {
+                type: event.chunk,
+                content: 'textDelta' in event ? event.textDelta : undefined,
+                toolCall: 'toolName' in event ? event.toolName : undefined,
+              });
+            },
+            onStepFinish: async (event) => {
+              console.log('Step finished:', {
+                type: event.stepType,
+                hasToolCalls: !!event.toolCalls?.length,
+                hasToolResults: !!event.toolResults?.length,
+              });
+            },
+            onFinish: async (event) => {
+              console.log('AI Stream finished:', {
+                stepCount: event.steps.length,
+                hasResponse: !!event.response,
+                messageCount: event.response.messages.length,
+              });
+              try {
+                const existingMessages = await loadChat(userId);
+                const updatedMessages = appendResponseMessages({
+                  messages: existingMessages,
+                  responseMessages: event.response.messages,
+                });
+                await saveChat({
+                  userId,
+                  messages: updatedMessages,
+                });
+                console.log('Messages saved successfully');
+                dataStream.writeMessageAnnotation({ saved: true });
+              } catch (error) {
+                console.error('Error saving messages:', error);
+                dataStream.writeMessageAnnotation({ saved: false, error: String(error) });
+                throw error;
+              }
+            },
           });
 
-          await saveChat({
-            userId,
-            messages: updatedMessages,
-          });
-
-          console.log('Messages saved successfully');
+          console.log('StreamText initialized, merging into dataStream');
+          result.mergeIntoDataStream(dataStream);
+          console.log('DataStream merge completed');
         } catch (error) {
-          console.error('Error saving messages:', error);
+          console.error('Error in dataStream execution:', error);
           throw error;
         }
       },
     });
-
-    return result.toDataStreamResponse();
   } catch (error) {
-    console.error('Error in chat API:', error);
+    console.error('Fatal error in chat API:', error);
     return new Response(
       JSON.stringify({
         error: 'Internal server error',

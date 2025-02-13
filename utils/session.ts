@@ -1,9 +1,5 @@
 import { jwtVerify, SignJWT } from 'jose';
-
-interface SessionData {
-  userId: string;
-  address: string;
-}
+import { SessionData } from '@/types/session';
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET_KEY);
 
@@ -22,9 +18,7 @@ export async function createSessionCookie(data: SessionData) {
   return jwt;
 }
 
-export async function verifySession(
-  token: string
-): Promise<{ valid: boolean; data: SessionData | null }> {
+export async function verifySession(token: string): Promise<{ valid: boolean; data: SessionData | null }> {
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET);
 

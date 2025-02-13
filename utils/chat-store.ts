@@ -21,13 +21,7 @@ export async function loadChat(userId: string): Promise<Message[]> {
   );
 }
 
-export async function saveChat({
-  userId,
-  messages,
-}: {
-  userId: string;
-  messages: Message[];
-}): Promise<void> {
+export async function saveChat({ userId, messages }: { userId: string; messages: Message[] }): Promise<void> {
   const { error } = await supabase.from('chat_messages').upsert(
     messages.map((msg) => ({
       id: msg.id,
