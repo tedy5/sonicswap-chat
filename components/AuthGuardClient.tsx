@@ -38,7 +38,9 @@ export function AuthGuardClient({ children, initialAuth }: { children: React.Rea
           {/* Welcome section */}
           <div className="mb-16 text-center">
             <h1 className="mb-2 text-4xl font-bold">AI Trading Assistant</h1>
-            <p className="text-muted-foreground">{isConnectStep ? 'Welcome back, connect your wallet to continue' : 'One last step - verify your wallet to start trading'}</p>
+            <p className="text-muted-foreground">
+              {isConnectStep ? 'Welcome back, connect your wallet to continue' : 'One last step - verify your wallet to start trading'}
+            </p>
           </div>
 
           {/* Features grid */}

@@ -1,5 +1,20 @@
 import { getDefaultConfig } from '@rainbow-me/rainbowkit';
-import { arbitrum, avalanche, base, bsc, cronos, fantom, gnosis, linea, mainnet, metis, neonMainnet, optimism, polygon, sonic } from 'wagmi/chains';
+import {
+  arbitrum,
+  avalanche,
+  base,
+  bsc,
+  cronos,
+  fantom,
+  gnosis,
+  linea,
+  mainnet,
+  metis,
+  neonMainnet,
+  optimism,
+  polygon,
+  sonic,
+} from 'wagmi/chains';
 
 export const config = getDefaultConfig({
   appName: 'SonicSwap AI Chat',

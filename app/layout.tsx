@@ -17,7 +17,8 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: 'SonicSwap AI Chat Agent',
-  description: 'AI assistant for SonicSwap - helping you navigate DeFi trading, swaps, and blockchain interactions with natural conversation.',
+  description:
+    'AI assistant for SonicSwap - helping you navigate DeFi trading, swaps, and blockchain interactions with natural conversation.',
 };
 
 export default async function RootLayout({
@@ -26,9 +27,16 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} dark font-sans`} suppressHydrationWarning={true}>
+    <html
+      lang="en"
+      className={`${inter.variable} dark font-sans`}
+      suppressHydrationWarning={true}
+    >
       <body className={`${inter.className} font-sans`}>
-        <Toaster position="top-center" richColors />
+        <Toaster
+          position="top-center"
+          richColors
+        />
         <div className="relative flex min-h-screen flex-col">
           <div className="absolute bottom-0 left-0 right-0 top-0 -z-20 bg-[#0a0b1e]" />
           <Providers>

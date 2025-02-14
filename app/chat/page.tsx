@@ -24,7 +24,11 @@ export default async function ChatPage() {
 
     return (
       <AuthGuard>
-        <Chat userId={userId} initialMessages={messages} isAuthenticated={true} />
+        <Chat
+          userId={userId}
+          initialMessages={messages}
+          isAuthenticated={true}
+        />
       </AuthGuard>
     );
   } catch (error) {

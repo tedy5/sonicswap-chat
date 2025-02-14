@@ -3,11 +3,7 @@
 import { cookies } from 'next/headers';
 import { generateNonce, SiweMessage } from 'siwe';
 import { supabase } from '@/supabase/server';
-import {
-  createSessionCookie,
-  SESSION_EXPIRY,
-  verifySession,
-} from '@/utils/session';
+import { createSessionCookie, SESSION_EXPIRY, verifySession } from '@/utils/session';
 
 export async function getNonce() {
   const nonce = generateNonce();
