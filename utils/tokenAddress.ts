@@ -8376,7 +8376,7 @@ export const TOKEN_ADDRESSES: TokenAddresses = {
     bc3m: '0x2f123cf3f37ce3328cc9b5b8415f9ec5109b45e7',
   },
   '137': {
-    usdc: '0x4318cb63a2b8edf2de971e2f17f77097e499459d',
+    usdc: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359',
     weth: '0x11cd37bb86f65419713f30673a480ea33c826872',
     usdt: '0x3553f861dec0257bada9f8ed268bf0d74e45e89c',
     brla: '0xe6a537a407488807f0bbeb0038b79004f19dddfb',
@@ -12377,7 +12377,6 @@ export const TOKEN_ADDRESSES: TokenAddresses = {
     mad: '0xaadba29443178a5ba5c79492f6e0e13901fdb2a0',
     av3crv: '0x1337bedc9d22ecbe766df105c9623922a27963ec',
     money: '0x0f577433bf59560ef2a79c124e9ff99fca258948',
-    'grelf[ava]': '0x945ca41d03ec19b6a6ebf2ef0f4d0a50b23e4f2c',
     krw: '0xa5acfeca5270bc9768633fbc86caa959b85ec8b7',
     bib01: '0xca30c93b02514f86d5c86a6e375e3a330b435fb5',
     gaj: '0x595c8481c48894771ce8fade54ac6bf59093f9e8',
@@ -12520,12 +12519,11 @@ export const TOKEN_ADDRESSES: TokenAddresses = {
     oooooo: '0xddf7d080c82b8048baae54e376a3406572429b4e',
   },
   '80094': {
-    'usdc.e': '0x549943e04f40284185054145c6e4e9568c1d3241',
+    usdc: '0x549943e04f40284185054145c6e4e9568c1d3241',
     weth: '0x2f6f07cdcf3588944bf4c42ac74ff24bf56e7590',
     wbera: '0x6969696969696969696969696969696969696969',
   },
   '245022926': {
-    '2080': '0x96e636d3ef60ee9745945120010c73619144632c',
     usdc: '0xea6b04272f9f62f997f666f07d3a974134f7ffb9',
     sol: '0x5f38248f339bf4e84a2caf4e4c0552862dc9f82a',
     wneon: '0x202c35e517fa803b537565c40f0a6965d7204609',
@@ -12533,7 +12531,6 @@ export const TOKEN_ADDRESSES: TokenAddresses = {
     bonk: '0xd4b6520f7fb78e1ee75639f3376c581a71bcdb0e',
     pyth: '0x0575dd4afd93b7522fee4e0179f243eca3856137',
     mngo: '0x6d12eaa69f8e4902d3f83d546b31f7318717014c',
-    'cgt2.0': '0xc1ed606683a3f89317d64bda602628d68a0b4b24',
     mora: '0x2043191e10a2a4b4601f5123d6c94e000b5d915f',
     lst: '0x14ccffc97ac156a7f1e3183adaa8e7cc888ad162',
     neop: '0x432b39e097d9faa2cbaa86f8d36bcf3b8019fe9f',

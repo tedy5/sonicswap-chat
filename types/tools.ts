@@ -1,3 +1,4 @@
+import { Address } from 'viem';
 import { TransactionData } from '@/types/bridge';
 
 export interface ToolInvocation {
@@ -16,9 +17,7 @@ export interface TypedToolInvocation extends ToolInvocation {
 }
 
 export function isTypedToolInvocation(toolInvocation: ToolInvocation): toolInvocation is TypedToolInvocation {
-  return ['bridge', 'showSwap', 'checkPrice', 'getCurrentPrice', 'resolveToken', 'resolveChain'].includes(
-    toolInvocation.toolName
-  );
+  return ['bridge', 'addToken'].includes(toolInvocation.toolName);
 }
 
 export interface ToolResponseProps {
@@ -46,6 +45,21 @@ export interface TokenWithMetadata extends Token {
   recommendedAmount: string;
 }
 
+// Add new tool args type
+export interface AddTokenToolArgs {
+  chainId: number;
+  token: string;
+}
+
+// Add new tool result type
+export interface AddTokenResult {
+  chainId: number;
+  tokenAddress: Address;
+  symbol: string;
+  decimals: number;
+  message: string;
+}
+
 export interface BridgeEstimation {
   srcChainTokenIn: TokenWithMetadata;
   dstChainTokenOut: TokenWithMetadata;
@@ -71,15 +85,12 @@ export interface BridgeSuccessResult {
 
 export type ToolArgs = {
   bridge: BridgeToolArgs;
-  resolveChain: { chainId: number };
+  addToken: AddTokenToolArgs;
 };
 
 export type ToolResults = {
-  showSwap: { result: { data: any } }; // Replace with specific data type
-  checkPrice: { result: { formattedPrice: string } };
-
   bridge: BridgeSystemResult | BridgeSuccessResult;
-  resolveChain: { chainId: number };
+  addToken: AddTokenResult | SystemResult;
 };
 
 export interface SystemResult {
@@ -87,4 +98,4 @@ export interface SystemResult {
   message: 'error' | 'failed' | 'unauthenticated';
 }
 
-export type ToolResult = BridgeSuccessResult | SystemResult;
+export type ToolResult = BridgeSuccessResult | AddTokenResult | SystemResult;

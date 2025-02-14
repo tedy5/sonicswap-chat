@@ -1,10 +1,12 @@
 'use client';
 
 import { formatUnits } from 'viem';
+import { AddTokenButton } from '@/components/AddTokenButton';
 import { BridgeButton } from '@/components/BridgeButton';
 import { TypingIndicator } from '@/components/TypingIndicator';
 import { Card } from '@/components/ui/card';
-import type { BridgeSuccessResult, BridgeToolArgs, SystemResult, ToolResponseProps } from '@/types/tools';
+import type { AddTokenResult, BridgeSuccessResult, BridgeToolArgs, SystemResult, ToolResponseProps } from '@/types/tools';
+import { getChainName } from '@/utils/chains';
 
 function getTimeDisplay(seconds: number): string {
   if (seconds < 60) {
@@ -185,9 +187,61 @@ export function ToolResponse({ toolInvocation }: ToolResponseProps) {
       );
     }
 
-    case 'resolveChain': {
-      const { chainId } = result as { chainId: number };
-      return <div className="mt-2 text-xs text-muted-foreground">Resolved chain ID: {chainId}</div>;
+    case 'addToken': {
+      const result = toolInvocation.result as AddTokenResult;
+      if ('type' in result) return null;
+
+      const { chainId, tokenAddress, symbol, decimals, message } = result;
+      return (
+        <div className="space-y-4">
+          <Card className="mb-5 rounded-2xl rounded-tl-sm bg-card px-4 py-3">
+            <div className="text-base">{message}</div>
+          </Card>
+
+          <Card className="w-96 rounded-tl-sm p-4">
+            <div className="text-base font-medium">Add Token to Wallet</div>
+            <div className="mt-4 space-y-3">
+              <div className="flex items-center justify-between border-b pb-3">
+                <div className="font-medium">Token</div>
+                <div className="text-right">
+                  <div className="flex flex-col items-end">
+                    <div className="group/tooltip relative">
+                      <span className="underline decoration-dotted underline-offset-2">{symbol}</span>
+                      <div className="invisible absolute bottom-full right-0 z-50 mb-2 w-[400px] rounded-lg bg-slate-700/80 p-4 text-sm text-white shadow-lg backdrop-blur-sm group-hover/tooltip:visible">
+                        <div>
+                          <p className="mb-1 text-left font-semibold text-gray-300">Contract Address:</p>
+                          <p className="text-left font-medium text-white">{tokenAddress}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between border-b pb-3">
+                <div className="font-medium">Network</div>
+                <div>{getChainName(chainId)}</div>
+              </div>
+
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <div className="flex justify-between">
+                  <span>Decimals</span>
+                  <span>{decimals}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <AddTokenButton
+                chainId={chainId}
+                tokenAddress={tokenAddress}
+                tokenSymbol={symbol}
+                tokenDecimals={decimals}
+              />
+            </div>
+          </Card>
+        </div>
+      );
     }
 
     default:

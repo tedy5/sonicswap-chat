@@ -3,7 +3,7 @@ import { openai } from '@ai-sdk/openai';
 import { appendResponseMessages, createDataStreamResponse, createIdGenerator, streamText } from 'ai';
 import { DEFI_ASSISTANT_PROMPT } from '@/config/system-prompts';
 import { bridgeTools } from '@/tools/bridge-tools';
-import { priceTools } from '@/tools/price-tools';
+import { tokenTools } from '@/tools/token-tools';
 import { loadChat, saveChat } from '@/utils/chat-store';
 import { verifySession } from '@/utils/session';
 
@@ -55,7 +55,7 @@ export async function POST(req: Request) {
             messages: contextMessages,
             tools: {
               ...bridgeTools,
-              ...priceTools,
+              ...tokenTools,
             },
             system: DEFI_ASSISTANT_PROMPT,
             experimental_generateMessageId: createIdGenerator({
