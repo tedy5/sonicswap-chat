@@ -1,38 +1,4 @@
-import { createPublicClient, http, type Chain } from 'viem';
-import {
-  arbitrum,
-  avalanche,
-  base,
-  bsc,
-  cronos,
-  fantom,
-  gnosis,
-  linea,
-  mainnet,
-  metis,
-  neonMainnet,
-  optimism,
-  polygon,
-  sonic,
-} from 'wagmi/chains';
-
-// Map chainId to viem chain configuration
-export const chainConfig: { [key: number]: Chain } = {
-  1: mainnet,
-  10: optimism,
-  56: bsc,
-  137: polygon,
-  250: fantom,
-  8453: base,
-  42161: arbitrum,
-  43114: avalanche,
-  59144: linea,
-  100: gnosis,
-  1088: metis,
-  146: sonic,
-  388: cronos,
-  245022926: neonMainnet,
-};
+import { getPublicClient } from './publicClient';
 
 const POLLING_INTERVAL = 5000; // 5 seconds
 const MAX_ATTEMPTS = 60; // 5 minutes total
@@ -46,19 +12,16 @@ export async function waitForTransaction(
 }> {
   console.log(`Checking transaction ${txHash} on chain ${chainId}`);
 
-  const chain = chainConfig[chainId];
-  if (!chain) {
+  let publicClient;
+  try {
+    publicClient = getPublicClient(chainId);
+  } catch (error) {
     console.log(`Chain ${chainId} not supported`);
     return {
       success: false,
       error: `Chain ID ${chainId} not supported for transaction verification`,
     };
   }
-
-  const publicClient = createPublicClient({
-    chain,
-    transport: http(),
-  });
 
   let attempts = 0;
 
