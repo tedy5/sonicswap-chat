@@ -25,7 +25,6 @@ export function AddTokenButton({ chainId, tokenAddress, tokenSymbol, tokenDecima
   const handleAddToken = useCallback(async () => {
     try {
       setIsPending(true);
-      // @ts-ignore - ethereum is injected by the wallet
       await window.ethereum.request({
         method: 'wallet_watchAsset',
         params: {

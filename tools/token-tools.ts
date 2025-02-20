@@ -2,7 +2,7 @@ import { tool } from 'ai';
 import { isAddress, zeroAddress, type Address } from 'viem';
 import { z } from 'zod';
 import { checkAuth } from '@/app/actions/auth';
-import { SessionData } from '@/types/session';
+import type { SessionData } from '@/types/session';
 import { getChainIds } from '@/utils/chainId';
 import { getTokenAddress } from '@/utils/tokenAddress';
 import { getTokenDecimals } from '@/utils/tokenDecimals';
