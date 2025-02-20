@@ -21,21 +21,14 @@ export async function getNonce() {
 
 async function createOrGetUser(walletAddress: string) {
   // First try to get existing user
-  const { data: existingUser, error: fetchError } = await supabase
-    .from('users')
-    .select('id')
-    .eq('wallet_address', walletAddress)
-    .single();
+  const { data: existingUser } = await supabase.from('users').select('id').eq('wallet_address', walletAddress).single();
 
-  if (fetchError) {
-    throw new Error('Failed to fetch user');
-  }
-
+  // If user exists, return their ID
   if (existingUser) {
     return existingUser.id;
   }
 
-  // If user doesn't exist, create new user
+  // If user doesn't exist or there was a "no rows returned" error, create new user
   const { data: newUser, error: insertError } = await supabase
     .from('users')
     .insert({ wallet_address: walletAddress })
