@@ -49,3 +49,5 @@ export const chainConfig: { [key: number]: Chain } = {
   388: cronos,
   245022926: neonMainnet,
 };
+
+export const chainId = 146;

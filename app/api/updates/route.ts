@@ -9,33 +9,33 @@ export async function GET(req: Request) {
   }
 
   const userId = session.userId;
-  console.log('New SSE connection request for userId:', userId);
-  console.log('Current clients before connection:', clients);
-
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     start(controller) {
-      const handler = (message: Message) => {
-        const data = JSON.stringify({ messages: [message] });
+      const handler = (message: Message & { streaming?: boolean }) => {
+        // Wrap the message in a messages array and preserve the streaming flag
+        const data = JSON.stringify({
+          messages: [
+            {
+              ...message,
+              // Keep the streaming flag if it exists
+              streaming: message.streaming,
+            },
+          ],
+        });
         controller.enqueue(encoder.encode(`data: ${data}\n\n`));
       };
 
       if (!clients.has(userId)) {
         clients.set(userId, new Set());
-        console.log('Created new client Set for userId:', userId);
       }
       clients.get(userId)?.add(handler);
-      console.log('Added handler for userId:', userId);
-      console.log('Current clients after connection:', clients);
 
       req.signal.addEventListener('abort', () => {
-        console.log('Client disconnected for userId:', userId);
         clients.get(userId)?.delete(handler);
         if (clients.get(userId)?.size === 0) {
           clients.delete(userId);
-          console.log('Removed empty client Set for userId:', userId);
         }
-        console.log('Current clients after disconnection:', clients);
       });
     },
   });

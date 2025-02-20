@@ -1,11 +1,14 @@
 'use client';
 
-import { formatUnits } from 'viem';
+import { formatUnits, maxUint256 } from 'viem';
 import { AddTokenButton } from '@/components/AddTokenButton';
+import { ApproveButton } from '@/components/ApproveButton';
 import { BridgeButton } from '@/components/BridgeButton';
+import { MarkdownContent } from '@/components/MarkdownContent';
 import { TypingIndicator } from '@/components/TypingIndicator';
 import { Card } from '@/components/ui/card';
-import type { AddTokenResult, BridgeSuccessResult, BridgeToolArgs, SystemResult, ToolResponseProps } from '@/types/tools';
+import { ASSISTANT_CONTRACT_ADDRESS } from '@/config/contracts';
+import { AddTokenResult, BridgeSuccessResult, BridgeToolArgs, SwapQuoteResult, SystemResult, type ToolResponseProps } from '@/types/tools';
 import { getChainName } from '@/utils/chains';
 
 function getTimeDisplay(seconds: number): string {
@@ -54,10 +57,6 @@ function formatTokenAmount(amount: string, decimals: number, symbol: string): st
 
 export function ToolResponse({ toolInvocation }: ToolResponseProps) {
   const { toolName, args, result, state } = toolInvocation;
-
-  if (!result && state === 'call') {
-    return <TypingIndicator />;
-  }
 
   if (!result || (result as SystemResult).type === 'system') {
     return null;
@@ -242,6 +241,86 @@ export function ToolResponse({ toolInvocation }: ToolResponseProps) {
           </Card>
         </div>
       );
+    }
+
+    case 'getQuote': {
+      const result = toolInvocation.result as SwapQuoteResult;
+
+      return (
+        <div className="space-y-4">
+          {/* Always show the content card if it exists */}
+          {result.content && (
+            <Card className="rounded-tl-sm p-4">
+              <div className="text-base">
+                <MarkdownContent content={result.content} />
+              </div>
+            </Card>
+          )}
+
+          {/* Show approval card if needed */}
+          {result.needsApproval && (
+            <Card className="w-96 rounded-tl-sm p-4">
+              <div className="mb-7 text-base font-medium">Token Approval Required</div>
+              <div className="mt-4 space-y-3 text-sm">
+                <div className="flex items-center justify-between border-b pb-3">
+                  <div className="font-medium">Token</div>
+                  <div>{result.needsApproval.symbol}</div>
+                </div>
+
+                <div className="flex items-center justify-between border-b pb-3">
+                  <div className="font-medium">Amount</div>
+                  <div>{formatTokenAmount(result.needsApproval.amount, result.needsApproval.decimals, result.needsApproval.symbol)}</div>
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  <p>Choose approval type:</p>
+                  <div className="flex gap-2">
+                    <div className="w-1/2">
+                      <ApproveButton
+                        fromAddress={result.needsApproval.fromAddress}
+                        toAddress={result.needsApproval.toAddress}
+                        spender={ASSISTANT_CONTRACT_ADDRESS}
+                        amount={result.needsApproval.amount}
+                        symbol={result.needsApproval.symbol}
+                        decimals={result.needsApproval.decimals}
+                        messageId={toolInvocation.toolCallId}
+                      />
+                    </div>
+                    <div className="w-1/2">
+                      <ApproveButton
+                        fromAddress={result.needsApproval.fromAddress}
+                        toAddress={result.needsApproval.toAddress}
+                        spender={ASSISTANT_CONTRACT_ADDRESS}
+                        amount={maxUint256.toString()}
+                        symbol={result.needsApproval.symbol}
+                        decimals={result.needsApproval.decimals}
+                        messageId={toolInvocation.toolCallId}
+                        isMaxApproval
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
+        </div>
+      );
+    }
+
+    case 'executeSwap': {
+      const result = toolInvocation.result as SwapQuoteResult;
+
+      if (!result && state === 'call') {
+        return <TypingIndicator />;
+      }
+
+      return result.content ? (
+        <Card className="rounded-tl-sm p-4">
+          <div className="text-base">
+            <MarkdownContent content={result.content} />
+          </div>
+        </Card>
+      ) : null;
     }
 
     default:

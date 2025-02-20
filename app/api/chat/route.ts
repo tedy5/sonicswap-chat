@@ -1,8 +1,9 @@
 import { cookies } from 'next/headers';
 import { openai } from '@ai-sdk/openai';
-import { appendResponseMessages, createDataStreamResponse, createIdGenerator, streamText } from 'ai';
+import { appendResponseMessages, createDataStreamResponse, createIdGenerator, smoothStream, streamText } from 'ai';
 import { DEFI_ASSISTANT_PROMPT } from '@/config/system-prompts';
 import { bridgeTools } from '@/tools/bridge-tools';
+import { swapTools } from '@/tools/swap-tools';
 import { tokenTools } from '@/tools/token-tools';
 import { loadChat, saveChat } from '@/utils/chat-store';
 import { verifySession } from '@/utils/session';
@@ -52,10 +53,12 @@ export async function POST(req: Request) {
           console.log('Initializing streamText');
           const result = streamText({
             model: openai('gpt-4o'),
+            experimental_transform: smoothStream(),
             messages: contextMessages,
             tools: {
               ...bridgeTools,
               ...tokenTools,
+              ...swapTools,
             },
             system: DEFI_ASSISTANT_PROMPT,
             experimental_generateMessageId: createIdGenerator({

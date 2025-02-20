@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { createIdGenerator } from 'ai';
 import { Message, useChat } from 'ai/react';
-import ReactMarkdown from 'react-markdown';
+import { MarkdownContent } from '@/components/MarkdownContent';
 import { ToolResponse } from '@/components/ToolResponse';
 import { TypingIndicator } from '@/components/TypingIndicator';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,14 @@ export function Chat({ userId, initialMessages, isAuthenticated }: ChatProps) {
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const getUniqueDisplayId = (message: Message, index: number) => {
+    if (message.content && message.toolInvocations?.length) {
+      // If message has both content and tool invocations, make the content ID unique
+      return `${message.id}-content-${index}`;
+    }
+    return message.id;
   };
 
   // Main chat stream
@@ -54,14 +62,38 @@ export function Chat({ userId, initialMessages, isAuthenticated }: ChatProps) {
         console.log('SSE message received:', event.data);
         const data = JSON.parse(event.data);
         if (data.messages) {
-          setMessages((prevMessages) => [...prevMessages, ...data.messages]);
+          setMessages((prevMessages) => {
+            const [newMessage] = data.messages;
+
+            // Handle streaming updates
+            if (newMessage.streaming) {
+              const existingIndex = prevMessages.findIndex((msg) => msg.id === newMessage.id);
+
+              if (existingIndex !== -1) {
+                // Update existing message
+                const updatedMessages = [...prevMessages];
+                updatedMessages[existingIndex] = {
+                  ...updatedMessages[existingIndex],
+                  ...newMessage,
+                  // Preserve any existing tool invocations
+                  toolInvocations: updatedMessages[existingIndex].toolInvocations,
+                };
+                return updatedMessages;
+              } else {
+                // Add as new message
+                return [...prevMessages, newMessage];
+              }
+            }
+
+            // For non-streaming messages (e.g., tool results)
+            return [...prevMessages, ...data.messages];
+          });
         }
       };
 
       eventSource.onerror = (error) => {
         console.error('SSE error:', error);
         eventSource.close();
-        // Attempt to reconnect after a delay
         setTimeout(connectSSE, 1000);
       };
     };
@@ -87,70 +119,8 @@ export function Chat({ userId, initialMessages, isAuthenticated }: ChatProps) {
     isAuthenticated,
   });
 
-  // Helper function to render message content
   const renderMessageContent = (content: MessageContent) => {
-    if (typeof content === 'string') {
-      return (
-        <ReactMarkdown
-          components={{
-            a: ({ ...props }) => (
-              <a
-                target="_blank"
-                rel="noopener noreferrer"
-                {...props}
-              />
-            ),
-          }}
-          className="[&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&>p]:my-2"
-        >
-          {content}
-        </ReactMarkdown>
-      );
-    }
-    if (Array.isArray(content)) {
-      return (
-        <ReactMarkdown
-          components={{
-            a: ({ ...props }) => (
-              <a
-                target="_blank"
-                rel="noopener noreferrer"
-                {...props}
-              />
-            ),
-          }}
-          className="[&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&>p]:my-2"
-        >
-          {content
-            .map((item) => {
-              if (typeof item === 'string') return item;
-              if (item.type === 'text') return item.text;
-              return null;
-            })
-            .filter(Boolean)
-            .join(' ')}
-        </ReactMarkdown>
-      );
-    }
-    if (content?.type === 'text') {
-      return (
-        <ReactMarkdown
-          components={{
-            a: ({ ...props }) => (
-              <a
-                target="_blank"
-                rel="noopener noreferrer"
-                {...props}
-              />
-            ),
-          }}
-          className="[&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&>p]:my-2"
-        >
-          {content.text}
-        </ReactMarkdown>
-      );
-    }
-    return JSON.stringify(content);
+    return <MarkdownContent content={content} />;
   };
 
   function renderMessage(message: Message) {
@@ -171,7 +141,7 @@ export function Chat({ userId, initialMessages, isAuthenticated }: ChatProps) {
           <Card
             className={`${
               isUserMessage ? 'rounded-2xl rounded-tr-sm bg-muted text-card-foreground' : 'rounded-2xl rounded-tl-sm bg-card'
-            } max-w-xl px-4 py-3 [&_a:hover]:text-blue-600 [&_a]:text-blue-500 [&_a]:no-underline hover:[&_a]:underline [&_li]:leading-normal [&_ol]:pl-4 [&_ul]:pl-0 [&_ul]:leading-none`}
+            } max-w-xl px-4 py-3 [&_a:hover]:text-blue-600 [&_a]:text-blue-500 [&_a]:no-underline hover:[&_a]:underline [&_li]:my-0 [&_li]:leading-[normal] [&_li_p]:my-0 [&_ol+p]:mt-0 [&_ol]:my-0 [&_ol]:pl-0 [&_ol]:leading-[0] [&_ol_li]:my-0 [&_ol_li_p]:my-0 [&_p+ol]:mt-0 [&_p]:my-0 [&_ul]:pl-0 [&_ul]:leading-none`}
           >
             <div className="[&_p]:my-0">{renderMessageContent(message.content)}</div>
           </Card>
@@ -197,14 +167,24 @@ export function Chat({ userId, initialMessages, isAuthenticated }: ChatProps) {
         <div className="mx-auto mb-24 mt-10 max-w-3xl pl-2">
           <WelcomeCard />
 
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`mb-10 flex whitespace-pre-wrap ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              {renderMessage(message)}
-            </div>
-          ))}
+          {messages
+            .reduce((unique: Message[], message, index) => {
+              // Find the last occurrence of this message ID
+              const lastIndex = messages.findLastIndex((m) => m.id === message.id);
+              // Only keep the message if this is its last occurrence
+              if (index === lastIndex) {
+                unique.push(message);
+              }
+              return unique;
+            }, [])
+            .map((message, index) => (
+              <div
+                key={getUniqueDisplayId(message, index)}
+                className={`mb-10 flex whitespace-pre-wrap ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                {renderMessage(message)}
+              </div>
+            ))}
 
           {/* Add typing indicator when waiting for first response */}
           {isLoading && (messages.length === 0 || messages[messages.length - 1].role === 'user') && (
