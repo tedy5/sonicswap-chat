@@ -101,7 +101,7 @@ export function BridgeButton({ srcChainId, dstChainId, message, data, messageId,
       });
 
       // Start tracking the bridge transaction
-      await fetch('/api/bridge/track', {
+      await fetch('/api/track/bridge', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -128,7 +128,7 @@ export function BridgeButton({ srcChainId, dstChainId, message, data, messageId,
       // Create a clean error object with just the user-friendly message
       const cleanError = new Error(String(error).split('Request Arguments:')[0].trim());
 
-      await fetch('/api/bridge/track', {
+      await fetch('/api/track/bridge', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
