@@ -3,23 +3,13 @@
 import { useCallback, useState } from 'react';
 import { waitForTransactionReceipt } from '@wagmi/core';
 import { Loader2 } from 'lucide-react';
-import { formatUnits, type Address } from 'viem';
+import { formatUnits } from 'viem';
 import { useWalletClient } from 'wagmi';
 import { Button } from '@/components/ui/button';
 import { config } from '@/config';
+import { ApproveButtonProps } from '@/types/tools';
 
-interface ApproveButtonProps {
-  fromAddress: Address;
-  toAddress: Address;
-  spender: Address;
-  amount: string;
-  symbol: string;
-  decimals: number;
-  messageId: string;
-  isMaxApproval?: boolean;
-}
-
-export function ApproveButton({ fromAddress, toAddress, spender, amount, symbol, decimals, messageId, isMaxApproval }: ApproveButtonProps) {
+export function ApproveButton({ fromAddress, toAddress, spender, amount, symbol, decimals, isMaxApproval }: ApproveButtonProps) {
   const { data: walletClient } = useWalletClient();
   const [isPending, setIsPending] = useState(false);
 
@@ -78,7 +68,6 @@ export function ApproveButton({ fromAddress, toAddress, spender, amount, symbol,
         },
         body: JSON.stringify({
           error: true,
-          messageId,
           type: 'approval',
           fromAddress,
           amount,
@@ -88,7 +77,7 @@ export function ApproveButton({ fromAddress, toAddress, spender, amount, symbol,
     } finally {
       setIsPending(false);
     }
-  }, [walletClient, fromAddress, toAddress, spender, amount, messageId]);
+  }, [walletClient, fromAddress, toAddress, spender, amount]);
 
   return (
     <Button

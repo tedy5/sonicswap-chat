@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { createIdGenerator } from 'ai';
 import { Message, useChat } from 'ai/react';
 import { MarkdownContent } from '@/components/MarkdownContent';
@@ -45,6 +45,29 @@ export function Chat({ userId, initialMessages, isAuthenticated }: ChatProps) {
     }),
     sendExtraMessageFields: true,
   });
+
+  const isWaitingForResponse = useCallback(() => {
+    if (!messages.length) return false;
+    const lastMessage = messages[messages.length - 1];
+
+    // If last message is from user
+    if (lastMessage.role === 'user') {
+      return true;
+    }
+
+    // If last message is from assistant but still being formed
+    if (lastMessage.role === 'assistant') {
+      // Check if there's any content being rendered
+      const hasContent = !!lastMessage.content;
+      // Check if there's any tool response being rendered
+      const hasToolResponse = lastMessage.toolInvocations?.some((tool) => tool.state === 'result');
+
+      // Show typing indicator if nothing is being rendered yet
+      return !hasContent && !hasToolResponse;
+    }
+
+    return false;
+  }, [messages]);
 
   // Updates stream
   useEffect(() => {
@@ -186,8 +209,8 @@ export function Chat({ userId, initialMessages, isAuthenticated }: ChatProps) {
               </div>
             ))}
 
-          {/* Add typing indicator when waiting for first response */}
-          {isLoading && (messages.length === 0 || messages[messages.length - 1].role === 'user') && (
+          {/* Show typing indicator when waiting for any kind of response */}
+          {isWaitingForResponse() && (
             <div className="mb-10 flex justify-start">
               <TypingIndicator />
             </div>
