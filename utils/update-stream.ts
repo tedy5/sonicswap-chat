@@ -5,8 +5,6 @@ import { tokenTools } from '@/tools/token-tools';
 import { type StreamingMessage } from '@/types/chat';
 import { loadChat, saveChat } from '@/utils/chat-store';
 
-const MAX_CONTEXT_MESSAGES = 10;
-
 export const clients = new Map<string, Set<(message: StreamingMessage) => void>>();
 
 const generateMessageId = createIdGenerator({
@@ -14,25 +12,31 @@ const generateMessageId = createIdGenerator({
   size: 32,
 });
 
-export async function sendStreamUpdate(userId: string, context: string, shouldSave: boolean = true) {
+export async function sendStreamUpdate(
+  userId: string,
+  context: string,
+  shouldSave: boolean = true,
+  maxContextMessages = 10
+) {
   console.log('Attempting to send update for userId:', userId);
   const userClients = clients.get(userId);
   console.log('Current clients for userId:', userId, userClients ? userClients.size : 0);
+  console.log('Context received: ' + context);
 
   const existingMessages = await loadChat(userId);
-  const contextMessages = existingMessages.slice(-MAX_CONTEXT_MESSAGES).map((msg) => ({
+  const contextMessages = existingMessages.slice(-maxContextMessages).map((msg) => ({
     role: msg.role as 'system' | 'user' | 'assistant',
     content: msg.content,
   }));
 
   // Create a promise that will resolve when the message is saved
   return new Promise((resolve, reject) => {
+    let accumulatedContent = '';
     createDataStreamResponse({
       execute: async (dataStream) => {
         try {
-          // Generate a single messageId for the entire stream
           const streamMessageId = generateMessageId();
-          let accumulatedContent = ''; // Track accumulated content
+
           const result = streamText({
             model: openai('gpt-4o'),
             experimental_transform: smoothStream(),
@@ -53,19 +57,21 @@ export async function sendStreamUpdate(userId: string, context: string, shouldSa
             experimental_generateMessageId: generateMessageId,
             onChunk: async (event) => {
               const currentClients = clients.get(userId);
-              if (currentClients && 'chunk' in event) {
+              if ('chunk' in event) {
                 const chunk = event.chunk;
                 if ('textDelta' in chunk && (chunk.type === 'text-delta' || chunk.type === 'reasoning')) {
                   accumulatedContent += chunk.textDelta;
-                  currentClients.forEach((handler) =>
-                    handler({
-                      id: streamMessageId,
-                      role: 'assistant',
-                      content: accumulatedContent,
-                      createdAt: new Date(),
-                      streaming: true,
-                    } as StreamingMessage)
-                  );
+                  if (currentClients) {
+                    currentClients.forEach((handler) =>
+                      handler({
+                        id: streamMessageId,
+                        role: 'assistant',
+                        content: accumulatedContent,
+                        createdAt: new Date(),
+                        streaming: true,
+                      } as StreamingMessage)
+                    );
+                  }
                 }
               }
             },

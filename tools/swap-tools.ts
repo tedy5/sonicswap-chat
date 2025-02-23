@@ -1,11 +1,13 @@
 import { tool } from 'ai';
-import { formatUnits, isAddress, parseUnits, zeroAddress, type Address } from 'viem';
+import { formatUnits, isAddress, parseUnits, type Address } from 'viem';
 import { z } from 'zod';
 import { checkAuth } from '@/app/actions/auth';
 import { chainId } from '@/config/chains';
+import { wAddress } from '@/config/contracts';
 import type { SessionData } from '@/types/session';
-import { executeSwap, getQuote } from '@/utils/aggregator';
-import { getBalances } from '@/utils/balances';
+import { getQuote } from '@/utils/aggregator';
+import { getAllUserBalances, getBalances, getContractBalances } from '@/utils/balances';
+import { executeSwap } from '@/utils/contract-operations';
 import { getTokenAddress } from '@/utils/tokenAddress';
 import { getTokenDecimals } from '@/utils/tokenDecimals';
 import { getTokenSymbol } from '@/utils/tokenSymbol';
@@ -15,7 +17,6 @@ const swapParamsSchema = z.object({
   fromToken: z.string().describe('Source token address or symbol (e.g. "ETH", "USDC", or contract address)'),
   toToken: z.string().describe('Destination token address or symbol (e.g. "ETH", "USDC", or contract address)'),
   amount: z.string().describe('Amount to swap (in human readable units)'),
-  useContract: z.boolean().optional().describe('Whether to use contract balance for swap'),
 });
 
 export const getSwapQuoteTool = tool({
@@ -31,13 +32,15 @@ export const getSwapQuoteTool = tool({
     }
     const session = sessionResult as SessionData;
 
+    console.log('Params: ', params);
+
     // Resolve fromToken
     let fromTokenAddress: string;
     try {
       if (isAddress(params.fromToken)) {
         fromTokenAddress = params.fromToken;
       } else if (params.fromToken.toLowerCase() === 'native') {
-        fromTokenAddress = zeroAddress;
+        fromTokenAddress = wAddress;
       } else {
         const resolvedAddress = getTokenAddress(chainId, params.fromToken);
         if (!resolvedAddress) {
@@ -65,7 +68,7 @@ export const getSwapQuoteTool = tool({
       if (isAddress(params.toToken)) {
         toTokenAddress = params.toToken;
       } else if (params.toToken.toLowerCase() === 'native') {
-        toTokenAddress = zeroAddress;
+        toTokenAddress = wAddress;
       } else {
         const resolvedAddress = getTokenAddress(chainId, params.toToken);
         if (!resolvedAddress) {
@@ -92,32 +95,35 @@ export const getSwapQuoteTool = tool({
       const decimals = await getTokenDecimals(chainId, fromTokenAddress);
       const amountIn = parseUnits(params.amount, decimals).toString();
 
-      // Get user's balances and check approval
-      const balances = await getBalances(session.userId, session.address as Address, fromTokenAddress as Address);
+      // Check if user has contract balance for the source token
+      const contractBalance = await getContractBalances(session.userId, fromTokenAddress as Address);
+      const useContract = contractBalance && contractBalance.amount > 0n ? 'contract' : 'wallet';
 
-      // Check if approval is needed
-      if (
-        !params.useContract &&
-        balances.walletBalance &&
-        BigInt(balances.walletBalance.allowance) < BigInt(amountIn)
-      ) {
-        const symbol = await getTokenSymbol(chainId, fromTokenAddress as Address);
-        const content = await sendStreamUpdate(
-          session.userId,
-          "You'll need to approve the token allowance first. This is a one-time permission needed for the assistant to swap tokens on your behalf.",
-          false
-        );
-        return {
-          success: true,
-          content,
-          needsApproval: {
-            fromAddress: fromTokenAddress as Address,
-            toAddress: toTokenAddress as Address,
-            amount: amountIn,
-            symbol,
-            decimals,
-          },
-        };
+      console.log('Fromtokenaddr: ' + fromTokenAddress);
+      console.log('contractamount: ' + contractBalance);
+
+      // If using wallet, check for approval
+      if (useContract === 'wallet') {
+        const balances = await getBalances(session.userId, session.address as Address, fromTokenAddress as Address);
+        if (balances.walletBalance && BigInt(balances.walletBalance.allowance) < BigInt(amountIn)) {
+          const symbol = await getTokenSymbol(chainId, fromTokenAddress as Address);
+          const content = await sendStreamUpdate(
+            session.userId,
+            "You'll need to approve the token allowance first. This is a one-time permission needed for the assistant to swap tokens on your behalf.",
+            false
+          );
+          return {
+            success: true,
+            content,
+            needsApproval: {
+              fromAddress: fromTokenAddress as Address,
+              toAddress: toTokenAddress as Address,
+              amount: amountIn,
+              symbol,
+              decimals,
+            },
+          };
+        }
       }
 
       // Get quote from aggregator
@@ -133,18 +139,35 @@ export const getSwapQuoteTool = tool({
       }
 
       const toDecimals = await getTokenDecimals(chainId, toTokenAddress);
-      const output = formatUnits(BigInt(quoteResult.data.expectedOutput), toDecimals);
+      const estimatedAmountOut = Number(formatUnits(BigInt(quoteResult.data.expectedOutput), toDecimals)).toFixed(4);
 
       const content = await sendStreamUpdate(
         session.userId,
-        `You're set to receive approximately ${output} ${params.toToken}. Would you like to proceed with the swap? 🚀`,
-        false
+        `THIS IS RESPOND FROM QUOTE: Inform the user: You're set to receive approximately ${estimatedAmountOut} ${params.toToken}. Would you like to proceed with the swap? 🚀`,
+        false,
+        1
       );
+
+      console.log('Return: ', {
+        success: true,
+        content,
+        quote: {
+          fromToken: params.fromToken,
+          toToken: params.toToken,
+          amountIn: params.amount,
+          estimatedAmountOut: estimatedAmountOut,
+        },
+      });
 
       return {
         success: true,
         content,
-        quote: quoteResult.data,
+        quote: {
+          fromToken: params.fromToken,
+          toToken: params.toToken,
+          amountIn: params.amount,
+          estimatedAmountOut: estimatedAmountOut,
+        },
       };
     } catch (error) {
       const content = await sendStreamUpdate(
@@ -162,7 +185,7 @@ async function resolveTokenAndAmount(
     fromToken: string;
     toToken: string;
     amount: string;
-    useContract?: boolean;
+    useContract?: string;
   },
   session: SessionData
 ) {
@@ -171,7 +194,7 @@ async function resolveTokenAndAmount(
   if (isAddress(params.fromToken)) {
     fromTokenAddress = params.fromToken;
   } else if (params.fromToken.toLowerCase() === 'native') {
-    fromTokenAddress = zeroAddress;
+    fromTokenAddress = wAddress;
   } else {
     const resolvedAddress = getTokenAddress(chainId, params.fromToken);
     if (!resolvedAddress) {
@@ -185,7 +208,7 @@ async function resolveTokenAndAmount(
   if (isAddress(params.toToken)) {
     toTokenAddress = params.toToken;
   } else if (params.toToken.toLowerCase() === 'native') {
-    toTokenAddress = zeroAddress;
+    toTokenAddress = wAddress;
   } else {
     const resolvedAddress = getTokenAddress(chainId, params.toToken);
     if (!resolvedAddress) {
@@ -202,7 +225,11 @@ async function resolveTokenAndAmount(
   const balances = await getBalances(session.userId, session.address as Address, fromTokenAddress as Address);
 
   // Check if approval is needed
-  if (!params.useContract && balances.walletBalance && BigInt(balances.walletBalance.allowance) < BigInt(amountIn)) {
+  if (
+    params.useContract === 'wallet' &&
+    balances.walletBalance &&
+    BigInt(balances.walletBalance.allowance) < BigInt(amountIn)
+  ) {
     const symbol = await getTokenSymbol(chainId, fromTokenAddress as Address);
     throw {
       type: 'approval_needed',
@@ -240,6 +267,31 @@ export const executeSwapTool = tool({
       // Resolve tokens and amount
       const { fromTokenAddress, toTokenAddress, amountIn } = await resolveTokenAndAmount(params, session);
 
+      // Check if user has contract balance
+      const contractBalance = await getContractBalances(session.userId, fromTokenAddress as Address);
+      const useContract = contractBalance && contractBalance.amount > 0n ? 'contract' : 'wallet';
+
+      // If using wallet, check for approval
+      if (useContract === 'wallet') {
+        const balances = await getBalances(session.userId, session.address as Address, fromTokenAddress as Address);
+        if (balances.walletBalance && BigInt(balances.walletBalance.allowance) < BigInt(amountIn)) {
+          const symbol = await getTokenSymbol(chainId, fromTokenAddress as Address);
+          const decimals = await getTokenDecimals(chainId, fromTokenAddress);
+          return {
+            success: false,
+            content:
+              "You'll need to approve the token allowance first. This is a one-time permission needed for the assistant to swap tokens on your behalf.",
+            needsApproval: {
+              fromAddress: fromTokenAddress as Address,
+              toAddress: toTokenAddress as Address,
+              amount: amountIn,
+              symbol,
+              decimals,
+            },
+          };
+        }
+      }
+
       // Get quote from aggregator
       const quoteResult = await getQuote(fromTokenAddress, toTokenAddress, amountIn);
 
@@ -253,7 +305,8 @@ export const executeSwapTool = tool({
       }
 
       // Execute the swap
-      const swapResult = await executeSwap(quoteResult.data, session.address as Address, params.useContract ?? false);
+      console.log('Executing the swap now');
+      const swapResult = await executeSwap(quoteResult.data, session.address as Address, useContract === 'contract');
 
       if (!swapResult.success || !swapResult.data) {
         const content = await sendStreamUpdate(
@@ -268,12 +321,18 @@ export const executeSwapTool = tool({
         return { success: false, content };
       }
 
-      const content = await sendStreamUpdate(
-        session.userId,
-        `Great news! Your swap was successful! 🎉\n\n` +
-          `You can check the details here: [View on Sonicscan](https://sonicscan.org/tx/${swapResult.data.hash})`,
-        false
-      );
+      console.log('Starting stream to the user');
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      let message;
+      if (useContract === 'contract') {
+        const { message: balancesMessage } = await getAllUserBalances(session.userId);
+        message = balancesMessage + `Inform the user that the swap was successful!`;
+      } else {
+        message = `Inform the user that the swap from their wallet was successful! Write this in new line: [View on Sonicscan](https://sonicscan.org/tx/${swapResult.data.hash} and then nice message in new line after that.`;
+      }
+
+      const content = await sendStreamUpdate(session.userId, message, false);
 
       return {
         success: true,
@@ -281,6 +340,7 @@ export const executeSwapTool = tool({
       };
     } catch (error) {
       // Handle approval needed case
+      console.log('Error1: ', error);
       if (error && typeof error === 'object' && 'type' in error && error.type === 'approval_needed') {
         const content = await sendStreamUpdate(
           session.userId,
@@ -294,6 +354,7 @@ export const executeSwapTool = tool({
       }
 
       // Handle other errors
+      console.log('Error2: ', error);
       const content = await sendStreamUpdate(
         session.userId,
         `Sorry, there was an unexpected error with your swap: ${error instanceof Error ? error.message : 'Unknown error'}`,

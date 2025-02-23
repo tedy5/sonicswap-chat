@@ -3,12 +3,13 @@ import { openai } from '@ai-sdk/openai';
 import { appendResponseMessages, createDataStreamResponse, createIdGenerator, smoothStream, streamText } from 'ai';
 import { DEFI_ASSISTANT_PROMPT } from '@/config/system-prompts';
 import { bridgeTools } from '@/tools/bridge-tools';
+import { contractBalanceTools } from '@/tools/contract-tools';
 import { swapTools } from '@/tools/swap-tools';
 import { tokenTools } from '@/tools/token-tools';
 import { loadChat, saveChat } from '@/utils/chat-store';
 import { verifySession } from '@/utils/session';
 
-const MAX_CONTEXT_MESSAGES = 10;
+const MAX_CONTEXT_MESSAGES = 4;
 
 export async function POST(req: Request) {
   const cookieStore = await cookies();
@@ -59,6 +60,7 @@ export async function POST(req: Request) {
               ...bridgeTools,
               ...tokenTools,
               ...swapTools,
+              ...contractBalanceTools,
             },
             system: DEFI_ASSISTANT_PROMPT,
             experimental_generateMessageId: createIdGenerator({

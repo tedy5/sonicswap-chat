@@ -49,7 +49,7 @@ export interface SwapQuote {
   priceImpact: number;
   transaction: {
     to: Address;
-    data: string;
+    data: `0x${string}`;
   };
   minOutputAmount: string;
 }
@@ -58,4 +58,15 @@ export interface SwapResult<T> {
   success: boolean;
   data?: T;
   error?: string;
+}
+
+export interface WithdrawResult<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+export interface TransactionReceiptParams {
+  hash: `0x${string}`;
+  confirmations?: number;
 }

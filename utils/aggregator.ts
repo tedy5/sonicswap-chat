@@ -1,6 +1,6 @@
 import { type Address } from 'viem';
 import { chainId } from '@/config/chains';
-import { ASSISTANT_CONTRACT_ABI, ASSISTANT_CONTRACT_ADDRESS } from '@/config/contracts';
+import { ASSISTANT_CONTRACT_ADDRESS } from '@/config/contracts';
 import {
   type OdosQuoteRequest,
   type OdosQuoteResponse,
@@ -9,7 +9,6 @@ import {
   type SwapQuote,
   type SwapResult,
 } from '@/types/aggregator';
-import { getWalletClient, waitForTransactionReceipt } from './walletClient';
 
 const SLIPPAGE = 1; // 1% slippage
 
@@ -78,7 +77,7 @@ export async function getQuote(fromToken: Address, toToken: Address, amount: str
         priceImpact: quoteResponse.data.priceImpact,
         transaction: {
           to: swapResponse.data.transaction.to as Address,
-          data: swapResponse.data.transaction.data,
+          data: swapResponse.data.transaction.data as `0x${string}`,
         },
         minOutputAmount,
       },
@@ -88,86 +87,6 @@ export async function getQuote(fromToken: Address, toToken: Address, amount: str
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error getting quote',
-    };
-  }
-}
-
-export async function executeSwap(
-  quote: SwapQuote,
-  userAddress: Address,
-  useContract: boolean = false
-): Promise<SwapResult<{ hash: string }>> {
-  try {
-    if (!quote.transaction) {
-      return {
-        success: false,
-        error: 'No transaction data in quote',
-      };
-    }
-
-    if (!process.env.ASSISTANT_PRIVATE_KEY) {
-      return {
-        success: false,
-        error: 'Assistant private key not configured',
-      };
-    }
-
-    const walletClient = getWalletClient();
-    let hash: string;
-
-    if (useContract) {
-      hash = await walletClient.writeContract({
-        address: ASSISTANT_CONTRACT_ADDRESS,
-        abi: ASSISTANT_CONTRACT_ABI,
-        functionName: 'executeSwap',
-        args: [
-          ASSISTANT_CONTRACT_ADDRESS,
-          quote.fromToken,
-          quote.toToken,
-          BigInt(quote.amountIn),
-          quote.transaction.to,
-          quote.transaction.data as `0x${string}`,
-        ],
-      });
-    } else {
-      hash = await walletClient.writeContract({
-        address: ASSISTANT_CONTRACT_ADDRESS,
-        abi: ASSISTANT_CONTRACT_ABI,
-        functionName: 'executeWalletSwap',
-        args: [
-          userAddress,
-          quote.fromToken,
-          quote.toToken,
-          BigInt(quote.amountIn),
-          BigInt(quote.minOutputAmount),
-          quote.transaction.to,
-          quote.transaction.data as `0x${string}`,
-        ],
-      });
-    }
-
-    // Wait for transaction receipt and check status
-    const receipt = await waitForTransactionReceipt({
-      hash: hash as `0x${string}`,
-    });
-
-    if (receipt.status === 'reverted') {
-      return {
-        success: false,
-        error: 'Transaction failed: Reverted',
-        data: { hash },
-      };
-    }
-
-    return {
-      success: true,
-      data: { hash },
-    };
-  } catch (error) {
-    console.error('Error executing swap:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error executing swap',
     };
   }
 }
@@ -224,6 +143,6 @@ async function fetchOdosSwapData(request: OdosSwapRequest): Promise<SwapResult<O
 
 function calculateMinOutput(amount: string, slippagePercent: number): string {
   const outputAmount = BigInt(amount);
-  const slippageFactor = 100n - BigInt(Math.floor(slippagePercent * 100));
-  return ((outputAmount * slippageFactor) / 100n).toString();
+  const slippageFactor = BigInt(Math.floor(slippagePercent * 100));
+  return ((outputAmount * (1000n - slippageFactor)) / 1000n).toString();
 }

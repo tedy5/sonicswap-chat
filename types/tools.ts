@@ -79,7 +79,7 @@ export interface SwapQuoteToolArgs {
   fromToken: string;
   toToken: string;
   amount: string;
-  useContract?: boolean;
+  useContract?: string;
 }
 
 export interface SwapQuoteResult {
@@ -98,6 +98,55 @@ export interface SwapQuoteResult {
     decimals: number;
   };
   error?: string;
+}
+
+export interface DepositResult {
+  success: boolean;
+  content: string;
+  needsApproval?: {
+    fromAddress: Address;
+    toAddress: Address;
+    amount: string;
+    symbol: string;
+    decimals: number;
+  };
+  deposit: {
+    token: Address;
+    amount: string;
+    symbol: string;
+    decimals: number;
+    isNative: boolean;
+    message: string;
+  };
+}
+
+export interface WithdrawResult {
+  success: boolean;
+  content?: string;
+  hash?: string;
+}
+
+export interface ApproveButtonProps {
+  fromAddress: Address;
+  toAddress: Address;
+  spender: Address;
+  amount: string;
+  symbol: string;
+  decimals: number;
+  isMaxApproval?: boolean;
+}
+
+export interface WithdrawResult<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+export interface DepositButtonProps {
+  token: Address;
+  amount: string;
+  isNative: boolean;
+  message: string;
 }
 
 // Combined types for all tools

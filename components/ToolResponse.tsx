@@ -5,11 +5,12 @@ import { AddTokenButton } from '@/components/AddTokenButton';
 import { ApproveButton } from '@/components/ApproveButton';
 import { BridgeButton } from '@/components/BridgeButton';
 import { MarkdownContent } from '@/components/MarkdownContent';
-import { TypingIndicator } from '@/components/TypingIndicator';
 import { Card } from '@/components/ui/card';
 import { ASSISTANT_CONTRACT_ADDRESS } from '@/config/contracts';
 import { AddTokenResult, BridgeSuccessResult, BridgeToolArgs, SwapQuoteResult, SystemResult, type ToolResponseProps } from '@/types/tools';
+import type { DepositResult, WithdrawResult } from '@/types/tools';
 import { getChainName } from '@/utils/chains';
+import { DepositButton } from './DepositButton';
 
 function getTimeDisplay(seconds: number): string {
   if (seconds < 60) {
@@ -56,7 +57,15 @@ function formatTokenAmount(amount: string, decimals: number, symbol: string): st
 }
 
 export function ToolResponse({ toolInvocation }: ToolResponseProps) {
-  const { toolName, args, result, state } = toolInvocation;
+  console.log('🛠️ Tool Invocation:', {
+    state: toolInvocation.state,
+    step: toolInvocation.step,
+    toolName: toolInvocation.toolName,
+    args: toolInvocation.args,
+    ...(toolInvocation.state === 'result' && { result: toolInvocation.result }),
+  });
+
+  const { toolName, args, result } = toolInvocation;
 
   if (!result || (result as SystemResult).type === 'system') {
     return null;
@@ -153,7 +162,7 @@ export function ToolResponse({ toolInvocation }: ToolResponseProps) {
               {approximateDelay && (
                 <div className="flex justify-between">
                   <span>Estimated time</span>
-                  <span>{getTimeDisplay(approximateDelay + 60)}</span>
+                  <span>{getTimeDisplay(approximateDelay)}</span>
                 </div>
               )}
             </div>
@@ -283,7 +292,6 @@ export function ToolResponse({ toolInvocation }: ToolResponseProps) {
                         amount={result.needsApproval.amount}
                         symbol={result.needsApproval.symbol}
                         decimals={result.needsApproval.decimals}
-                        messageId={toolInvocation.toolCallId}
                       />
                     </div>
                     <div className="w-1/2">
@@ -294,7 +302,6 @@ export function ToolResponse({ toolInvocation }: ToolResponseProps) {
                         amount={maxUint256.toString()}
                         symbol={result.needsApproval.symbol}
                         decimals={result.needsApproval.decimals}
-                        messageId={toolInvocation.toolCallId}
                         isMaxApproval
                       />
                     </div>
@@ -310,9 +317,90 @@ export function ToolResponse({ toolInvocation }: ToolResponseProps) {
     case 'executeSwap': {
       const result = toolInvocation.result as SwapQuoteResult;
 
-      if (!result && state === 'call') {
-        return <TypingIndicator />;
-      }
+      return result.content ? (
+        <Card className="rounded-tl-sm p-4">
+          <div className="text-base">
+            <MarkdownContent content={result.content} />
+          </div>
+        </Card>
+      ) : null;
+    }
+
+    case 'deposit': {
+      const result = toolInvocation.result as DepositResult;
+
+      return (
+        <div className="space-y-4">
+          {/* Always show the content card if it exists */}
+          {result.content && (
+            <Card className="rounded-tl-sm p-4">
+              <div className="text-base">
+                <MarkdownContent content={result.content} />
+              </div>
+            </Card>
+          )}
+
+          {/* Show deposit card if deposit data exists */}
+          {result.deposit && (
+            <Card className="w-96 rounded-tl-sm p-4">
+              <div className="mb-7 text-base font-medium">Deposit Details</div>
+              <div className="mt-4 space-y-3 text-sm">
+                <div className="flex items-center justify-between border-b pb-3">
+                  <div className="font-medium">Token</div>
+                  <div>{result.deposit.symbol}</div>
+                </div>
+
+                <div className="flex items-center justify-between border-b pb-3">
+                  <div className="font-medium">Amount</div>
+                  <div>{formatTokenAmount(result.deposit.amount, result.deposit.decimals, result.deposit.symbol)}</div>
+                </div>
+
+                <div className="mt-4">
+                  {result.needsApproval ? (
+                    <div className="space-y-2">
+                      <p>Choose approval type:</p>
+                      <div className="flex gap-2">
+                        <div className="w-1/2">
+                          <ApproveButton
+                            fromAddress={result.needsApproval.fromAddress}
+                            toAddress={result.needsApproval.toAddress}
+                            spender={ASSISTANT_CONTRACT_ADDRESS}
+                            amount={result.needsApproval.amount}
+                            symbol={result.needsApproval.symbol}
+                            decimals={result.needsApproval.decimals}
+                          />
+                        </div>
+                        <div className="w-1/2">
+                          <ApproveButton
+                            fromAddress={result.needsApproval.fromAddress}
+                            toAddress={result.needsApproval.toAddress}
+                            spender={ASSISTANT_CONTRACT_ADDRESS}
+                            amount={maxUint256.toString()}
+                            symbol={result.needsApproval.symbol}
+                            decimals={result.needsApproval.decimals}
+                            isMaxApproval
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <DepositButton
+                      token={result.deposit.token}
+                      amount={result.deposit.amount}
+                      isNative={result.deposit.isNative}
+                      message={result.deposit.message}
+                    />
+                  )}
+                </div>
+              </div>
+            </Card>
+          )}
+        </div>
+      );
+    }
+
+    case 'withdraw': {
+      const result = toolInvocation.result as WithdrawResult;
 
       return result.content ? (
         <Card className="rounded-tl-sm p-4">
