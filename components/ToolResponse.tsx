@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import { formatUnits, maxUint256 } from 'viem';
 import { AddTokenButton } from '@/components/AddTokenButton';
 import { ApproveButton } from '@/components/ApproveButton';
@@ -12,14 +13,14 @@ import type { DepositResult, WithdrawResult } from '@/types/tools';
 import { getChainName } from '@/utils/chains';
 import { DepositButton } from './DepositButton';
 
-function getTimeDisplay(seconds: number): string {
+const getTimeDisplay = (seconds: number): string => {
   if (seconds < 60) {
     return `~${Math.ceil(seconds)} seconds`;
   }
   return `~${Math.floor(seconds / 60)} minutes`;
-}
+};
 
-function formatFixedFee(amount: string, decimals: number, symbol: string): string {
+const formatFixedFee = (amount: string, decimals: number, symbol: string): string => {
   const value = Number(formatUnits(BigInt(amount), decimals));
 
   // Define max decimals based on symbol
@@ -48,15 +49,15 @@ function formatFixedFee(amount: string, decimals: number, symbol: string): strin
   const trimmedValue = formattedValue.replace(/\.?0+$/, (match) => (match.includes('.') ? '' : match));
 
   return `${trimmedValue} ${symbol}`;
-}
+};
 
-function formatTokenAmount(amount: string, decimals: number, symbol: string): string {
+const formatTokenAmount = (amount: string, decimals: number, symbol: string): string => {
   const formattedNumber = Number(formatUnits(BigInt(amount), decimals));
   const isWholeNumber = formattedNumber % 1 === 0;
   return `${isWholeNumber ? formattedNumber.toString() : formattedNumber.toFixed(4)} ${symbol}`;
-}
+};
 
-export function ToolResponse({ toolInvocation }: ToolResponseProps) {
+function ToolResponseBase({ toolInvocation }: ToolResponseProps) {
   console.log('🛠️ Tool Invocation:', {
     state: toolInvocation.state,
     step: toolInvocation.step,
@@ -415,3 +416,12 @@ export function ToolResponse({ toolInvocation }: ToolResponseProps) {
       return null;
   }
 }
+
+export const ToolResponse = memo(ToolResponseBase, (prevProps, nextProps) => {
+  return (
+    prevProps.toolInvocation.state === nextProps.toolInvocation.state &&
+    prevProps.toolInvocation.toolCallId === nextProps.toolInvocation.toolCallId &&
+    prevProps.toolInvocation.step === nextProps.toolInvocation.step &&
+    JSON.stringify(prevProps.toolInvocation.result) === JSON.stringify(nextProps.toolInvocation.result)
+  );
+});
