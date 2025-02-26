@@ -12,6 +12,7 @@ import { Card } from '@/components/ui/card';
 import { IconArrowUp } from '@/components/ui/icons';
 import { Input } from '@/components/ui/input';
 import WelcomeCard from '@/components/WelcomeCard';
+import { ChatProps, MessageContent } from '@/types/chat';
 
 const UserMessage = memo(function UserMessage({
   message,
@@ -30,16 +31,16 @@ const UserMessage = memo(function UserMessage({
 const AIMessage = memo(function AIMessage({
   message,
   renderMessageContent,
-  isLoading,
-  isLastMessage,
 }: {
   message: Message;
   renderMessageContent: (content: MessageContent) => JSX.Element;
   isLoading: boolean;
   isLastMessage: boolean;
 }) {
-  const showTypingIndicator =
-    isLoading && isLastMessage && !message.content && (!message.toolInvocations || message.toolInvocations.length === 0);
+  // If there's no content and no tool invocations, return null
+  if (!message.content && (!message.toolInvocations || message.toolInvocations.length === 0)) {
+    return null;
+  }
 
   return (
     <>
@@ -57,41 +58,9 @@ const AIMessage = memo(function AIMessage({
           <ToolResponse toolInvocation={toolInvocation} />
         </div>
       ))}
-      {showTypingIndicator && <TypingIndicator />}
     </>
   );
 });
-
-const MessagesContainer = memo(function MessagesContainer({
-  messages,
-  getUniqueDisplayId,
-  renderMessage,
-}: {
-  messages: Message[];
-  getUniqueDisplayId: (message: Message, index: number) => string;
-  renderMessage: (message: Message) => JSX.Element;
-}) {
-  return (
-    <>
-      {messages.map((message, index) => (
-        <div
-          key={getUniqueDisplayId(message, index)}
-          className={`mb-10 flex whitespace-pre-wrap ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-        >
-          {renderMessage(message)}
-        </div>
-      ))}
-    </>
-  );
-});
-
-interface ChatProps {
-  userId: string;
-  initialMessages: Message[];
-  isAuthenticated: boolean;
-}
-
-type MessageContent = string | { type: 'text'; text: string }[] | { type: 'text'; text: string };
 
 export function Chat({ userId, initialMessages, isAuthenticated }: ChatProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -131,14 +100,39 @@ export function Chat({ userId, initialMessages, isAuthenticated }: ChatProps) {
     if (!messages.length) return false;
     const lastMessage = messages[messages.length - 1];
 
+    // Debug logging
+    console.log('Checking waiting state:', {
+      messageId: lastMessage.id,
+      role: lastMessage.role,
+      hasContent: !!lastMessage.content,
+      toolInvocations: lastMessage.toolInvocations,
+      timestamp: new Date().toISOString(),
+    });
+
+    // If the last message is from the user, we're waiting for a response
     if (lastMessage.role === 'user') {
       return true;
     }
 
+    // For assistant messages, we're waiting if:
+    // 1. There's no content yet, OR
+    // 2. There are tool invocations in progress
     if (lastMessage.role === 'assistant') {
       const hasContent = !!lastMessage.content;
-      const hasToolResponse = lastMessage.toolInvocations?.some((tool) => tool.state === 'result');
-      return !hasContent && !hasToolResponse;
+      const hasToolInvocationsInProgress = lastMessage.toolInvocations?.some(
+        (tool) => tool.state === 'partial-call' || tool.state === 'call'
+      );
+
+      // More detailed logging
+      console.log('Assistant message state:', {
+        hasContent,
+        hasToolInvocationsInProgress,
+        toolStates: lastMessage.toolInvocations?.map((t) => t.state),
+        isWaiting: !hasContent || hasToolInvocationsInProgress,
+        timestamp: new Date().toISOString(),
+      });
+
+      return !hasContent || hasToolInvocationsInProgress;
     }
 
     return false;
@@ -210,14 +204,14 @@ export function Chat({ userId, initialMessages, isAuthenticated }: ChatProps) {
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  useEffect(() => {
-    console.log('Chat State:', {
-      messagesCount: messages.length,
-      hasInput: !!input,
-      isLoading,
-      isAuthenticated,
-    });
-  }, [messages.length, input, isLoading, isAuthenticated]);
+  // useEffect(() => {
+  //   console.log('Chat State:', {
+  //     messagesCount: messages.length,
+  //     hasInput: !!input,
+  //     isLoading,
+  //     isAuthenticated,
+  //   });
+  // }, [messages.length, input, isLoading, isAuthenticated]);
 
   const renderMessageContent = useCallback((content: MessageContent) => {
     return <MarkdownContent content={content} />;
@@ -228,25 +222,52 @@ export function Chat({ userId, initialMessages, isAuthenticated }: ChatProps) {
       const isUserMessage = message.role === 'user';
       const isLastMessage = message === messages[messages.length - 1];
 
-      return (
-        <div className={`flex flex-col gap-2 ${isUserMessage ? 'items-end' : 'items-start'}`}>
-          {isUserMessage ? (
+      // For user messages
+      if (isUserMessage) {
+        return (
+          <div className="flex flex-col items-end">
             <UserMessage
               message={message}
               renderMessageContent={renderMessageContent}
             />
-          ) : (
+          </div>
+        );
+      }
+
+      // For assistant messages
+      if (!isUserMessage) {
+        // If waiting for response and no content yet
+        if (isLastMessage && isWaitingForResponse() && !message.content) {
+          return (
+            <div className="flex flex-col items-start">
+              <Card className="max-w-xl rounded-2xl rounded-tl-sm bg-card px-5 py-4">
+                <TypingIndicator />
+              </Card>
+            </div>
+          );
+        }
+
+        // Skip empty messages that aren't waiting
+        if (!message.content && (!message.toolInvocations || message.toolInvocations.length === 0)) {
+          return null;
+        }
+
+        // Normal message with content
+        return (
+          <div className="flex flex-col items-start">
             <AIMessage
               message={message}
               renderMessageContent={renderMessageContent}
               isLoading={isLoading}
               isLastMessage={isLastMessage}
             />
-          )}
-        </div>
-      );
+          </div>
+        );
+      }
+
+      return null; // Shouldn't reach here
     },
-    [messages, isLoading, renderMessageContent]
+    [messages, isLoading, renderMessageContent, isWaitingForResponse]
   );
 
   const uniqueMessages = useMemo(
@@ -326,15 +347,28 @@ export function Chat({ userId, initialMessages, isAuthenticated }: ChatProps) {
             </Button>
           )}
 
-          <MessagesContainer
-            messages={uniqueMessages}
-            getUniqueDisplayId={getUniqueDisplayId}
-            renderMessage={renderMessage}
-          />
+          <div className="space-y-10">
+            {uniqueMessages.map((message, index) => {
+              const renderedMessage = renderMessage(message);
+              if (!renderedMessage) return null;
 
-          {isWaitingForResponse() && (
-            <div className="mb-10 flex justify-start">
-              <TypingIndicator />
+              return (
+                <div
+                  key={getUniqueDisplayId(message, index)}
+                  className={`flex whitespace-pre-wrap ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  {renderedMessage}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Show typing indicator when the last message is from user */}
+          {messages.length > 0 && messages[messages.length - 1].role === 'user' && isWaitingForResponse() && (
+            <div className="mt-10 flex justify-start">
+              <Card className="max-w-xl rounded-2xl rounded-tl-sm bg-card px-5 py-4">
+                <TypingIndicator />
+              </Card>
             </div>
           )}
 
