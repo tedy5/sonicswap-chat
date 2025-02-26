@@ -6,7 +6,7 @@ import { chainConfig, chainId, RPC_URLS } from '@/config/chains';
 const account = privateKeyToAccount(process.env.ASSISTANT_PRIVATE_KEY as `0x${string}`);
 
 // Create public client for reading blockchain state
-const publicClient = createPublicClient({
+export const publicClient = createPublicClient({
   chain: chainConfig[chainId],
   transport: http(RPC_URLS[chainId]),
 });
