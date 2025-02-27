@@ -7,21 +7,18 @@ import { Card } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
 import { ConnectWallet } from './ConnectWallet';
 
-export function AuthGuardClient({ children, initialAuth }: { children: React.ReactNode; initialAuth: boolean }) {
-  const { isAuthenticated, setIsAuthenticated, signIn, isConnected, isConnecting } = useAuth();
+export function AuthGuardClient({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, signIn, isConnected, isConnecting, isLoading: authLoading } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!isConnecting && initialAuth && isConnected) {
-      setIsAuthenticated(true);
-    }
     if (!isConnecting) {
       setIsLoading(false);
     }
-  }, [initialAuth, isConnected, setIsAuthenticated, isConnecting]);
+  }, [isConnected, isConnecting]);
 
-  if (isLoading || isConnecting) {
+  if (isLoading || isConnecting || authLoading) {
     return (
       <div className="flex h-[calc(100vh_-_theme(spacing.16))] items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-white"></div>

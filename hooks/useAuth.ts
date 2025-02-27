@@ -4,21 +4,97 @@ import { useEffect, useState } from 'react';
 import { SiweMessage } from 'siwe';
 import { toast } from 'sonner';
 import { useAccount, useSignMessage } from 'wagmi';
-import { getNonce, verifySignature } from '@/app/actions/auth';
+import {
+  autoAuthenticateAddress,
+  checkAddressHasSession,
+  checkAuth,
+  getNonce,
+  signOut as serverSignOut,
+  verifySignature,
+} from '@/app/actions/auth';
 
 export function useAuth() {
   const { address, isConnected, isConnecting } = useAccount();
   const { signMessageAsync } = useSignMessage();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authenticatedAddress, setAuthenticatedAddress] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!isConnected) {
-      setIsAuthenticated(false);
-    }
-  }, [isConnected]);
+    const verifyAuth = async () => {
+      if (!isConnected) {
+        setIsAuthenticated(false);
+        setAuthenticatedAddress(null);
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        const authData = await checkAuth();
+
+        if (authData) {
+          setIsAuthenticated(true);
+          setAuthenticatedAddress(authData.address);
+
+          if (address && authData.address !== address) {
+            const hasSession = await checkAddressHasSession(address);
+
+            if (hasSession) {
+              const result = await autoAuthenticateAddress(address);
+
+              if (result.success) {
+                setIsAuthenticated(true);
+                setAuthenticatedAddress(address);
+                toast.success('Automatically signed in with connected wallet');
+              } else {
+                setIsAuthenticated(false);
+                toast.info('Wallet address changed. Please sign in again.');
+              }
+            } else {
+              setIsAuthenticated(false);
+              toast.info('Wallet address changed. Please sign in again.');
+            }
+          }
+        } else {
+          if (address) {
+            const hasSession = await checkAddressHasSession(address);
+
+            if (hasSession) {
+              const result = await autoAuthenticateAddress(address);
+
+              if (result.success) {
+                setIsAuthenticated(true);
+                setAuthenticatedAddress(address);
+                toast.success('Automatically signed in with connected wallet');
+              } else {
+                setIsAuthenticated(false);
+                setAuthenticatedAddress(null);
+              }
+            } else {
+              setIsAuthenticated(false);
+              setAuthenticatedAddress(null);
+            }
+          }
+        }
+      } catch (error) {
+        setIsAuthenticated(false);
+        setAuthenticatedAddress(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    verifyAuth();
+  }, [isConnected, address]);
 
   const signIn = async () => {
+    if (!address) {
+      return;
+    }
+
     try {
+      setIsLoading(true);
       const nonce = await getNonce();
 
       const message = new SiweMessage({
@@ -33,6 +109,7 @@ export function useAuth() {
       });
 
       const preparedMessage = message.prepareMessage();
+
       const signature = await signMessageAsync({
         message: preparedMessage,
       });
@@ -40,18 +117,37 @@ export function useAuth() {
       await verifySignature(JSON.stringify(message), signature);
 
       setIsAuthenticated(true);
+      setAuthenticatedAddress(address);
       toast.success('Successfully signed in');
     } catch (error) {
       setIsAuthenticated(false);
+      setAuthenticatedAddress(null);
       toast.error('Failed to sign in');
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  const signOut = async () => {
+    try {
+      await serverSignOut();
+    } catch (error) {
+      // Error handling is silent
+    }
+
+    setIsAuthenticated(false);
+    setAuthenticatedAddress(null);
+    toast.success('Signed out successfully');
   };
 
   return {
     isAuthenticated,
-    setIsAuthenticated,
+    isLoading,
+    authenticatedAddress,
     signIn,
+    signOut,
     isConnected,
     isConnecting,
+    currentAddress: address,
   };
 }

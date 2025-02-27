@@ -90,5 +90,62 @@ export async function checkAuth() {
   }
 
   const { valid, data } = await verifySession(session.value);
-  return valid ? data : null;
+
+  if (valid && data) {
+    return data;
+  } else {
+    return null;
+  }
+}
+
+export async function checkAddressHasSession(address: string) {
+  try {
+    // Check if the user exists in the database
+    const { data: user } = await supabase.from('users').select('id').eq('wallet_address', address).single();
+
+    if (!user) {
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.log(error);
+    return false;
+  }
+}
+
+export async function autoAuthenticateAddress(address: string) {
+  try {
+    // First check if the user exists
+    const { data: user } = await supabase.from('users').select('id').eq('wallet_address', address).single();
+
+    if (!user) {
+      return { success: false };
+    }
+
+    // Create a session for this user without requiring signature
+    const sessionToken = await createSessionCookie({
+      userId: user.id,
+      address: address,
+    });
+
+    const cookieStore = await cookies();
+    cookieStore.set('user_session', sessionToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: SESSION_EXPIRY,
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.log(error);
+    return { success: false };
+  }
+}
+
+export async function signOut() {
+  const cookieStore = await cookies();
+  cookieStore.delete('user_session');
+  return { success: true };
 }
