@@ -10,4 +10,11 @@ export interface ChatProps {
   isAuthenticated: boolean;
 }
 
+export interface AuthPageProps {
+  isConnectStep: boolean;
+  error: string | null;
+  signIn: () => Promise<void>;
+  setError: React.Dispatch<React.SetStateAction<string | null>>;
+}
+
 export type MessageContent = string | { type: 'text'; text: string }[] | { type: 'text'; text: string };
