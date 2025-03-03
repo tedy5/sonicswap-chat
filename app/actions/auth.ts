@@ -1,22 +1,40 @@
 'use server';
 
 import { cookies } from 'next/headers';
-import { generateNonce, SiweMessage } from 'siwe';
+import { verifyMessage } from 'viem';
+import type { Address } from 'viem';
 import { supabase } from '@/supabase/server';
 import { createSessionCookie, SESSION_EXPIRY, verifySession } from '@/utils/session';
 
-export async function getNonce() {
-  const nonce = generateNonce();
-  const cookieStore = await cookies();
+// Create a simple in-memory store with expiration
+const signatureStore = new Map<string, { address: string; expires: number }>();
 
-  cookieStore.set('siwe_nonce', nonce, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    maxAge: 60 * 5, // 5 minutes
-  });
+// Limit store to 10,000 signatures
+if (signatureStore.size > 10000) {
+  // Get oldest entries and delete them
+  const entries = Array.from(signatureStore.entries());
+  entries.sort((a, b) => a[1].expires - b[1].expires);
 
-  return nonce;
+  // Delete oldest 1000 entries
+  for (let i = 0; i < 1000 && i < entries.length; i++) {
+    signatureStore.delete(entries[i][0]);
+  }
+}
+
+// Cleanup function that runs periodically
+function cleanupExpiredSignatures() {
+  const now = Date.now();
+  for (const [signature, data] of signatureStore.entries()) {
+    if (data.expires < now) {
+      signatureStore.delete(signature);
+    }
+  }
+}
+
+// Set up periodic cleanup (every minute)
+if (typeof global !== 'undefined') {
+  // Only run this in Node.js environment, not during build
+  setInterval(cleanupExpiredSignatures, 60 * 1000);
 }
 
 async function createOrGetUser(walletAddress: string) {
@@ -44,28 +62,42 @@ async function createOrGetUser(walletAddress: string) {
 
 export async function verifySignature(message: string, signature: string) {
   try {
-    const siweMessage = new SiweMessage(JSON.parse(message));
-    const cookieStore = await cookies();
-    const nonce = cookieStore.get('siwe_nonce')?.value;
-
-    if (!nonce) {
-      throw new Error('Invalid nonce');
+    // Extract the address from the message
+    const addressMatch = message.match(/Address:\s*(0x[a-fA-F0-9]{40})/);
+    if (!addressMatch || !addressMatch[1]) {
+      throw new Error('Could not extract address from message');
     }
+    const address = addressMatch[1] as Address;
 
-    const fields = await siweMessage.verify({ signature, nonce });
+    // Verify the signature
+    const recoveredAddress = await verifyMessage({
+      address,
+      message,
+      signature: signature as `0x${string}`,
+    });
 
-    if (!fields.success) {
+    if (!recoveredAddress) {
       throw new Error('Invalid signature');
     }
 
+    // Check if this signature has been used before
+    if (signatureStore.has(signature)) {
+      throw new Error('Signature has already been used');
+    }
+
+    // Store the signature with 5-minute expiration
+    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes from now
+    signatureStore.set(signature, { address, expires: expiresAt });
+
     // Create or get user after successful verification
-    const userId = await createOrGetUser(fields.data.address);
+    const userId = await createOrGetUser(address);
 
     const sessionToken = await createSessionCookie({
       userId,
-      address: fields.data.address,
+      address: address,
     });
 
+    const cookieStore = await cookies();
     cookieStore.set('user_session', sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -73,7 +105,6 @@ export async function verifySignature(message: string, signature: string) {
       maxAge: SESSION_EXPIRY,
     });
 
-    cookieStore.delete('siwe_nonce');
     return { success: true };
   } catch (error) {
     console.error(error);

@@ -1,14 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { SiweMessage } from 'siwe';
 import { toast } from 'sonner';
 import { useAccount, useSignMessage } from 'wagmi';
 import {
   autoAuthenticateAddress,
   checkAddressHasSession,
   checkAuth,
-  getNonce,
   signOut as serverSignOut,
   verifySignature,
 } from '@/app/actions/auth';
@@ -95,26 +93,20 @@ export function useAuth() {
 
     try {
       setIsLoading(true);
-      const nonce = await getNonce();
 
-      const message = new SiweMessage({
-        domain: window.location.host,
-        address: address,
-        statement:
-          'Sign-in with Ethereum. This is not a transaction and does not give SonicSwap or anyone else permission to send transactions or interact with your assets.',
-        uri: window.location.origin,
-        version: '1',
-        chainId: 146,
-        nonce,
-      });
+      // Simple message for the user to sign
+      const message = `Sign this message to login to the app.
 
-      const preparedMessage = message.prepareMessage();
+Address:
+${address}`;
 
+      // User signs this simple message
       const signature = await signMessageAsync({
-        message: preparedMessage,
+        message: message,
       });
 
-      await verifySignature(JSON.stringify(message), signature);
+      // Send to server for verification
+      await verifySignature(message, signature);
 
       setIsAuthenticated(true);
       setAuthenticatedAddress(address);
