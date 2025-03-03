@@ -5,8 +5,8 @@ import { Brain, Shuffle, TrendUp } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
+import { AuthPageProps } from '@/types/chat';
 import { ConnectWallet } from './ConnectWallet';
-import { AuthPageProps } from '@/types/chat'
 
 function SignatureLoadingOverlay() {
   return (
@@ -15,8 +15,8 @@ function SignatureLoadingOverlay() {
         <div className="flex flex-col items-center text-center">
           <h3 className="text-xl font-semibold">Waiting for signature</h3>
           <p className="mt-2 text-muted-foreground">
-            Please check your wallet and sign the message to verify your identity.
-            This won't cost any gas fees or initiate transactions.
+            Please check your wallet and sign the message to verify your identity. This won&apos;t cost any gas fees or initiate
+            transactions.
           </p>
           <div className="mt-6">
             <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
@@ -41,7 +41,7 @@ function AuthPage({ isConnectStep, error, signIn, setError }: AuthPageProps) {
 
         {/* Features grid */}
         <div className="mb-10 grid grid-cols-1 gap-6 md:grid-cols-3">
-          <Card className="bg-card/50 p-6 backdrop-blur hover:bg-card/70 transition-colors">
+          <Card className="bg-card/50 p-6 backdrop-blur transition-colors hover:bg-card/70">
             <div className="flex flex-col items-center text-center">
               <Brain className="mb-4 h-12 w-12 text-primary" />
               <h2 className="mb-2 text-xl font-semibold">Market Analysis</h2>
@@ -49,7 +49,7 @@ function AuthPage({ isConnectStep, error, signIn, setError }: AuthPageProps) {
             </div>
           </Card>
 
-          <Card className="bg-card/50 p-6 backdrop-blur hover:bg-card/70 transition-colors">
+          <Card className="bg-card/50 p-6 backdrop-blur transition-colors hover:bg-card/70">
             <div className="flex flex-col items-center text-center">
               <TrendUp className="mb-4 h-12 w-12 text-primary" />
               <h2 className="mb-2 text-xl font-semibold">Smart Trading</h2>
@@ -57,7 +57,7 @@ function AuthPage({ isConnectStep, error, signIn, setError }: AuthPageProps) {
             </div>
           </Card>
 
-          <Card className="bg-card/50 p-6 backdrop-blur hover:bg-card/70 transition-colors">
+          <Card className="bg-card/50 p-6 backdrop-blur transition-colors hover:bg-card/70">
             <div className="flex flex-col items-center text-center">
               <Shuffle className="mb-4 h-12 w-12 text-primary" />
               <h2 className="mb-2 text-xl font-semibold">Cross-Chain Operations</h2>

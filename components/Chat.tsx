@@ -22,7 +22,7 @@ const UserMessage = memo(function UserMessage({
   renderMessageContent: (content: MessageContent) => JSX.Element;
 }) {
   return (
-    <Card className="max-w-xl rounded-2xl rounded-tr-sm bg-muted px-4 py-3 text-card-foreground [&_a:hover]:text-blue-600 [&_a]:text-blue-500 [&_a]:no-underline hover:[&_a]:underline [&_li]:my-0 [&_li]:leading-[normal] [&_li_p]:my-0 [&_ol+p]:mt-0 [&_ol]:my-0 [&_ol]:pl-0 [&_ol]:leading-[0] [&_ol_li]:my-0 [&_ol_li_p]:my-0 [&_p+ol]:mt-0 [&_p]:my-0 [&_ul]:pl-0 [&_ul]:leading-none">
+    <Card className="max-w-xl rounded-2xl rounded-br-sm bg-muted px-4 py-3 text-card-foreground [&_a:hover]:text-blue-600 [&_a]:text-blue-500 [&_a]:no-underline hover:[&_a]:underline [&_li]:my-0 [&_li]:leading-[normal] [&_li_p]:my-0 [&_ol+p]:mt-0 [&_ol]:my-0 [&_ol]:pl-0 [&_ol]:leading-[0] [&_ol_li]:my-0 [&_ol_li_p]:my-0 [&_p+ol]:mt-0 [&_p]:my-0 [&_ul]:pl-0 [&_ul]:leading-none">
       <div className="[&_p]:my-0">{renderMessageContent(message.content)}</div>
     </Card>
   );
@@ -45,7 +45,7 @@ const AIMessage = memo(function AIMessage({
   return (
     <>
       {message.content && (
-        <Card className="max-w-xl rounded-2xl rounded-tl-sm bg-card px-4 py-3 [&_a:hover]:text-blue-600 [&_a]:text-blue-500 [&_a]:no-underline hover:[&_a]:underline [&_li]:my-0 [&_li]:leading-[normal] [&_li_p]:my-0 [&_ol+p]:mt-0 [&_ol]:my-0 [&_ol]:pl-0 [&_ol]:leading-[0] [&_ol_li]:my-0 [&_ol_li_p]:my-0 [&_p+ol]:mt-0 [&_p]:my-0 [&_ul]:pl-0 [&_ul]:leading-none">
+        <Card className="max-w-xl rounded-2xl rounded-bl-sm bg-card px-4 py-3 [&_a:hover]:text-blue-600 [&_a]:text-blue-500 [&_a]:no-underline hover:[&_a]:underline [&_li]:my-0 [&_li]:leading-[normal] [&_li_p]:my-0 [&_ol+p]:mt-0 [&_ol]:my-0 [&_ol]:pl-0 [&_ol]:leading-[0] [&_ol_li]:my-0 [&_ol_li_p]:my-0 [&_p+ol]:mt-0 [&_p]:my-0 [&_ul]:pl-0 [&_ul]:leading-none">
           <div className="[&_p]:my-0">{renderMessageContent(message.content)}</div>
         </Card>
       )}
