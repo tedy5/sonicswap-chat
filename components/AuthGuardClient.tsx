@@ -94,12 +94,12 @@ function AuthPage({ isConnectStep, error, signIn, setError }: AuthPageProps) {
   );
 }
 
-export function AuthGuardClient({ children }: { children: React.ReactNode }) {
+export function AuthGuardClient({ children, initialAuth = false }: { children: React.ReactNode; initialAuth?: boolean }) {
   const { isAuthenticated, signIn, isConnected, isConnecting, isLoading: authLoading } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [isSigning, setIsSigning] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
-  const [hasCompletedAuth, setHasCompletedAuth] = useState(false);
+  const [hasCompletedAuth, setHasCompletedAuth] = useState(initialAuth);
 
   useEffect(() => {
     // Only set initializing to false when we've determined the initial auth state
