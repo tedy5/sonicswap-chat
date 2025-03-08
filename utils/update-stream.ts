@@ -1,6 +1,8 @@
 import { openai } from '@ai-sdk/openai';
 import { createDataStreamResponse, createIdGenerator, smoothStream, streamText } from 'ai';
+import { UPDATE_LIMIT_PROMPT } from '@/config/limit-prompt';
 import { UPDATE_STREAM_PROMPT } from '@/config/update-prompts';
+import { orderTools } from '@/tools/order-tools';
 import { tokenTools } from '@/tools/token-tools';
 import { type StreamingMessage } from '@/types/chat';
 import { loadChat, saveChat } from '@/utils/chat-store';
@@ -16,18 +18,27 @@ export async function sendStreamUpdate(
   userId: string,
   context: string,
   shouldSave: boolean = true,
-  maxContextMessages = 10
+  maxContextMessages = 10,
+  skipHistory: boolean = false,
+  promptType: 'stream' | 'limit' = 'stream'
 ) {
   console.log('Attempting to send update for userId:', userId);
   const userClients = clients.get(userId);
   console.log('Current clients for userId:', userId, userClients ? userClients.size : 0);
   console.log('Context received: ' + context);
 
-  const existingMessages = await loadChat(userId);
-  const contextMessages = existingMessages.slice(-maxContextMessages).map((msg) => ({
-    role: msg.role as 'system' | 'user' | 'assistant',
-    content: msg.content,
-  }));
+  // Only load history if not skipping
+  let contextMessages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [];
+  if (!skipHistory && maxContextMessages > 0) {
+    const existingMessages = await loadChat(userId);
+    contextMessages = existingMessages.slice(-maxContextMessages).map((msg) => ({
+      role: msg.role as 'system' | 'user' | 'assistant',
+      content: msg.content,
+    }));
+  }
+
+  // Select the appropriate system prompt based on promptType
+  const systemPrompt = promptType === 'stream' ? UPDATE_STREAM_PROMPT : UPDATE_LIMIT_PROMPT;
 
   // Create a promise that will resolve when the message is saved
   return new Promise((resolve, reject) => {
@@ -39,11 +50,12 @@ export async function sendStreamUpdate(
 
           const result = streamText({
             model: openai('gpt-4o'),
+            maxSteps: 5,
             experimental_transform: smoothStream(),
             messages: [
               {
                 role: 'system' as const,
-                content: UPDATE_STREAM_PROMPT,
+                content: systemPrompt,
               },
               ...contextMessages,
               {
@@ -53,6 +65,7 @@ export async function sendStreamUpdate(
             ],
             tools: {
               ...tokenTools,
+              ...orderTools,
             },
             experimental_generateMessageId: generateMessageId,
             onChunk: async (event) => {
@@ -80,55 +93,47 @@ export async function sendStreamUpdate(
               try {
                 console.log('Raw messages:', JSON.stringify(event.response.messages, null, 2));
 
-                const formattedMessages: StreamingMessage[] = [];
+                // Create a single assistant message
+                const assistantMessage: StreamingMessage = {
+                  id: streamMessageId,
+                  role: 'assistant',
+                  content: accumulatedContent,
+                  createdAt: new Date(),
+                };
 
+                const formattedMessages: StreamingMessage[] = [assistantMessage];
+
+                // Process tool calls and results
                 for (const msg of event.response.messages) {
-                  if (msg.role === 'assistant') {
-                    const message: StreamingMessage = {
-                      id: streamMessageId,
-                      role: 'assistant',
-                      content: accumulatedContent,
-                      createdAt: new Date(),
-                    };
-
-                    // Handle tool calls if present
-                    if (Array.isArray(msg.content)) {
-                      const toolCall = msg.content.find((item) => item.type === 'tool-call');
-                      if (toolCall) {
-                        message.toolInvocations = [
-                          {
-                            toolName: toolCall.toolName,
-                            toolCallId: toolCall.toolCallId,
-                            args: toolCall.args,
-                            state: 'call',
-                            step: 0,
-                          },
-                        ];
-                      }
+                  if (msg.role === 'assistant' && Array.isArray(msg.content)) {
+                    const toolCall = msg.content.find((item) => item.type === 'tool-call');
+                    if (toolCall) {
+                      assistantMessage.toolInvocations = [
+                        {
+                          toolName: toolCall.toolName,
+                          toolCallId: toolCall.toolCallId,
+                          args: toolCall.args,
+                          state: 'call',
+                          step: 0,
+                        },
+                      ];
                     }
-                    formattedMessages.push(message);
-                  } else if (msg.role === 'tool') {
-                    // Find the last assistant message and update it with the tool result
-                    const lastMessage = formattedMessages[formattedMessages.length - 1];
-                    if (lastMessage && lastMessage.role === 'assistant' && Array.isArray(msg.content)) {
-                      const toolResult = msg.content.find((item) => item.type === 'tool-result');
-                      if (toolResult) {
-                        lastMessage.toolInvocations = [
-                          {
-                            toolName: toolResult.toolName,
-                            toolCallId: toolResult.toolCallId,
-                            args: {},
-                            result: toolResult.result,
-                            state: 'result',
-                            step: 0,
-                          },
-                        ];
-                      }
+                  } else if (msg.role === 'tool' && Array.isArray(msg.content)) {
+                    const toolResult = msg.content.find((item) => item.type === 'tool-result');
+                    if (toolResult) {
+                      assistantMessage.toolInvocations = [
+                        {
+                          toolName: toolResult.toolName,
+                          toolCallId: toolResult.toolCallId,
+                          args: {},
+                          result: toolResult.result,
+                          state: 'result',
+                          step: 0,
+                        },
+                      ];
                     }
                   }
                 }
-
-                // console.log('Formatted messages:', JSON.stringify(formattedMessages, null, 2));
 
                 // Save to database
                 if (shouldSave) {
@@ -148,9 +153,6 @@ export async function sendStreamUpdate(
                 }
 
                 dataStream.writeMessageAnnotation({ saved: true });
-                // console.log('Adding 5 second delay before resolving...');
-                // await new Promise(r => setTimeout(r, 5000)); // 5 second delay
-                // console.log('Delay complete, resolving now');
                 resolve(accumulatedContent);
               } catch (error) {
                 console.error('Error handling messages:', error);
@@ -162,7 +164,6 @@ export async function sendStreamUpdate(
 
           console.log('StreamText initialized, merging into dataStream');
           result.mergeIntoDataStream(dataStream);
-          console.log('DataStream merge completed');
         } catch (error) {
           console.error('Error in dataStream execution:', error);
           reject(error);

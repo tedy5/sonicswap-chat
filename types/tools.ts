@@ -149,6 +149,25 @@ export interface DepositButtonProps {
   message: string;
 }
 
+export interface LimitOrder {
+  id: string;
+  tokenIn: Address;
+  tokenOut: Address;
+  amountIn: bigint;
+  amountOutMin: bigint;
+  status: 'active' | 'executed' | 'cancelled';
+  createdAt: Date;
+  executedAt?: Date;
+  executionTxHash?: string;
+  orderId?: string;
+  userAddress?: Address;
+  tokenInSymbol?: string;
+  tokenOutSymbol?: string;
+  tokenInDecimals?: number;
+  tokenOutDecimals?: number;
+  transactionHash?: string;
+}
+
 // Combined types for all tools
 export type ToolArgs = {
   bridge: BridgeToolArgs;

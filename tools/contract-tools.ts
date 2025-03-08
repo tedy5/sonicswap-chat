@@ -5,7 +5,7 @@ import { checkAuth } from '@/app/actions/auth';
 import { chainId } from '@/config/chains';
 import { wAddress } from '@/config/contracts';
 import type { SessionData } from '@/types/session';
-import { getBalances, getContractBalance } from '@/utils/balances';
+import { getAllUserBalances, getBalances, getContractBalance } from '@/utils/balances';
 import { executeWithdraw } from '@/utils/contract-operations';
 import { getTokenAddress } from '@/utils/tokenAddress';
 import { getTokenDecimals } from '@/utils/tokenDecimals';
@@ -229,7 +229,55 @@ export const withdrawFromContractTool = tool({
   },
 });
 
+export const checkBalancesTool = tool({
+  description: 'Check user contract balances for all tokens',
+  parameters: z.object({}),
+  execute: async function () {
+    const sessionResult = await checkAuth();
+    if (!sessionResult) {
+      return {
+        success: false,
+        error: 'Authentication required',
+      };
+    }
+    const session = sessionResult as SessionData;
+
+    console.log('CheckBalances tool invoked');
+
+    try {
+      // Use the existing getAllUserBalances function
+      const { contractBalances } = await getAllUserBalances(session.userId);
+
+      // Format balances for display
+      if (contractBalances.length === 0) {
+        const content = "You don't have any tokens in the contract";
+        return {
+          success: true,
+          content,
+          balances: [],
+        };
+      }
+
+      // Format balances into a simple human-readable format
+      const formattedBalances = contractBalances.map((balance) => {
+        const formattedAmount = formatUnits(balance.amount, balance.decimals || 18);
+
+        return `${formattedAmount} ${balance.symbol || 'Unknown'}`;
+      });
+
+      return {
+        success: true,
+        balances: formattedBalances,
+      };
+    } catch (error) {
+      const content = `Sorry, there was an error checking your balances: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      return { success: false, content };
+    }
+  },
+});
+
 export const contractBalanceTools = {
   deposit: depositToContractTool,
   withdraw: withdrawFromContractTool,
+  checkBalances: checkBalancesTool,
 };

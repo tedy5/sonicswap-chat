@@ -4,6 +4,7 @@ import { appendResponseMessages, createDataStreamResponse, createIdGenerator, sm
 import { DEFI_ASSISTANT_PROMPT } from '@/config/system-prompts';
 import { bridgeTools } from '@/tools/bridge-tools';
 import { contractBalanceTools } from '@/tools/contract-tools';
+import { orderTools } from '@/tools/order-tools';
 import { swapTools } from '@/tools/swap-tools';
 import { tokenTools } from '@/tools/token-tools';
 import { loadChat, saveChat } from '@/utils/chat-store';
@@ -61,6 +62,7 @@ export async function POST(req: Request) {
               ...tokenTools,
               ...swapTools,
               ...contractBalanceTools,
+              ...orderTools,
             },
             system: DEFI_ASSISTANT_PROMPT,
             experimental_generateMessageId: createIdGenerator({
