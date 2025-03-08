@@ -132,7 +132,7 @@ export function Chat({ userId, initialMessages, isAuthenticated }: ChatProps) {
         timestamp: new Date().toISOString(),
       });
 
-      return !hasContent || hasToolInvocationsInProgress;
+      return !hasContent && (hasToolInvocationsInProgress || !lastMessage.toolInvocations);
     }
 
     return false;
@@ -236,8 +236,15 @@ export function Chat({ userId, initialMessages, isAuthenticated }: ChatProps) {
 
       // For assistant messages
       if (!isUserMessage) {
-        // If waiting for response and no content yet
-        if (isLastMessage && isWaitingForResponse() && !message.content) {
+        // Show typing indicator when:
+        // 1. It's the last message AND
+        // 2. We're waiting for a response AND
+        // 3. Either there's no content yet OR there are tool invocations in progress
+        const hasToolInvocationsInProgress = message.toolInvocations?.some(
+          (tool) => tool.state === 'partial-call' || tool.state === 'call'
+        );
+
+        if (isLastMessage && isWaitingForResponse() && (!message.content || hasToolInvocationsInProgress)) {
           return (
             <div className="flex flex-col items-start">
               <Card className="max-w-xl rounded-2xl rounded-tl-sm bg-card px-5 py-4">

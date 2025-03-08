@@ -9,7 +9,7 @@ import { config } from '@/config';
 import { BridgeButtonProps } from '@/types/bridge';
 import { getChainName } from '@/utils/chains';
 
-export function BridgeButton({ srcChainId, dstChainId, message, data, messageId, tokenIn, tokenOut, amount }: BridgeButtonProps) {
+export function BridgeButton({ srcChainId, dstChainId, data, messageId, tokenIn, tokenOut, amount }: BridgeButtonProps) {
   const { chain } = useAccount();
   const { switchChain } = useSwitchChain();
   const { data: walletClient } = useWalletClient();
@@ -167,7 +167,6 @@ export function BridgeButton({ srcChainId, dstChainId, message, data, messageId,
 
   return (
     <div className="space-y-2">
-      <p>{message}</p>
       <Button
         size="lg"
         onClick={handleClick}

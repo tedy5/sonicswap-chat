@@ -74,7 +74,7 @@ export const bridgeTool = tool({
         'Amount to bridge in human readable format (e.g., "1" for 1 ETH, "0.5" for 0.5 ETH, NOT in wei/base units)'
       ),
   }),
-  execute: async function (params, { toolCallId }) {
+  execute: async function (params, { toolCallId, abortSignal }) {
     const session = (await checkAuth()) as SessionData;
 
     try {
@@ -180,8 +180,11 @@ export const bridgeTool = tool({
         data,
       });
 
+      const message = await sendStreamUpdate(session.userId, 'Generating modal for you to bridge tokens', false);
+
       // Return combined response with both quote and transaction details
       return {
+        message: message,
         srcChainId: srcChain.chainId,
         dstChainId: dstChain.chainId,
         estimation: data.estimation,
@@ -192,6 +195,7 @@ export const bridgeTool = tool({
         fixFee: data.fixFee,
         amount: params.amount,
         tx: data.tx,
+        shouldAbort: true,
       };
     } catch (error) {
       console.error('Bridge Error:', {

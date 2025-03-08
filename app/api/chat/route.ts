@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { openai } from '@ai-sdk/openai';
 import { appendResponseMessages, createDataStreamResponse, createIdGenerator, smoothStream, streamText } from 'ai';
+import type { Message } from 'ai';
 import { DEFI_ASSISTANT_PROMPT } from '@/config/system-prompts';
 import { bridgeTools } from '@/tools/bridge-tools';
 import { contractBalanceTools } from '@/tools/contract-tools';
@@ -10,11 +11,13 @@ import { tokenTools } from '@/tools/token-tools';
 import { loadChat, saveChat } from '@/utils/chat-store';
 import { verifySession } from '@/utils/session';
 
-const MAX_CONTEXT_MESSAGES = 4;
+const MAX_CONTEXT_MESSAGES = 8;
 
 export async function POST(req: Request) {
   const cookieStore = await cookies();
   const session = cookieStore.get('user_session');
+  const abortController = new AbortController();
+  const signal = abortController.signal;
 
   if (!session) {
     return new Response('Not authenticated', { status: 401 });
@@ -29,7 +32,19 @@ export async function POST(req: Request) {
     }
 
     const userId = data.userId;
-    const contextMessages = messages.slice(-MAX_CONTEXT_MESSAGES);
+    const contextMessages: Message[] = messages.slice(-MAX_CONTEXT_MESSAGES).map((message: Message) => {
+      if (message.toolInvocations) {
+        return {
+          ...message,
+          toolInvocations: message.toolInvocations.map((invocation) => ({
+            ...invocation,
+            result: 'success',
+          })),
+        };
+      }
+      return message;
+    });
+    console.log('Messages: ', JSON.stringify(contextMessages, null, 2));
 
     console.log('Starting AI request:', {
       userId,
@@ -57,6 +72,8 @@ export async function POST(req: Request) {
             model: openai('gpt-4o'),
             experimental_transform: smoothStream(),
             messages: contextMessages,
+            maxSteps: 5,
+            abortSignal: signal,
             tools: {
               ...bridgeTools,
               ...tokenTools,
@@ -69,19 +86,43 @@ export async function POST(req: Request) {
               prefix: 'assistant',
               size: 32,
             }),
-            onChunk: async (event) => {
-              console.log('AI Chunk received:', {
-                type: event.chunk,
-                content: 'textDelta' in event ? event.textDelta : undefined,
-                toolCall: 'toolName' in event ? event.toolName : undefined,
-              });
-            },
             onStepFinish: async (event) => {
               console.log('Step finished:', {
                 type: event.stepType,
                 hasToolCalls: !!event.toolCalls?.length,
                 hasToolResults: !!event.toolResults?.length,
               });
+
+              // Log tool results, specifically looking for bridge tool results
+              if (event.toolResults?.length) {
+                for (const result of event.toolResults) {
+                  if (result.toolName === 'bridge') {
+                    // Check if we should abort based on the flag from bridge-tools
+                    if (result.result.shouldAbort) {
+                      try {
+                        // Save the current state
+                        const existingMessages = await loadChat(userId);
+                        const updatedMessages = appendResponseMessages({
+                          messages: existingMessages,
+                          responseMessages: event.response.messages,
+                        });
+
+                        await saveChat({
+                          userId,
+                          messages: updatedMessages,
+                        });
+                        console.log('Messages saved successfully before abort');
+
+                        // Abort after saving
+                        abortController.abort();
+                      } catch (error) {
+                        console.error('Error saving messages before abort:', error);
+                      }
+                      break;
+                    }
+                  }
+                }
+              }
             },
             onFinish: async (event) => {
               console.log('AI Stream finished:', {

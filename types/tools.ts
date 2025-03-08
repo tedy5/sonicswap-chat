@@ -39,6 +39,7 @@ export interface BridgeSuccessResult {
   dstChainId: number;
   fixFee: string;
   amount: string;
+  message: string;
 }
 
 // Add token types

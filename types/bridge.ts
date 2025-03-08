@@ -15,7 +15,6 @@ export interface TransactionData {
 export interface BridgeButtonProps {
   srcChainId: number;
   dstChainId: number;
-  message: string;
   data: TransactionData;
   messageId?: string;
   tokenIn: Token;

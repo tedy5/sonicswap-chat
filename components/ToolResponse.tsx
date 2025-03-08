@@ -75,7 +75,8 @@ function ToolResponseBase({ toolInvocation }: ToolResponseProps) {
   switch (toolName) {
     case 'bridge': {
       const bridgeResult = result as BridgeSuccessResult;
-      const { estimation, approximateDelay, srcChainNativeSymbol, nativeTokenPrice, tx, srcChainId, dstChainId, fixFee } = bridgeResult;
+      const { estimation, approximateDelay, srcChainNativeSymbol, nativeTokenPrice, tx, srcChainId, dstChainId, fixFee, message } =
+        bridgeResult;
 
       const { srcChainTokenIn, dstChainTokenOut } = estimation;
 
@@ -94,105 +95,111 @@ function ToolResponseBase({ toolInvocation }: ToolResponseProps) {
       const deBridgeFeeUsd = Number(formatUnits(BigInt(fixFee), 18)) * nativeTokenPrice;
 
       return (
-        <Card className="mt-4 min-w-96 rounded-tl-sm p-4">
-          <div className="text-base font-medium">Bridge Details</div>
-          <div className="mt-4 space-y-3 text-sm">
-            <div className="flex items-center justify-between border-b pb-3">
-              <div className="font-medium">You send</div>
-              <div className="text-right">
-                <div>{formatTokenAmount(srcChainTokenIn.amount, srcChainTokenIn.decimals, srcChainTokenIn.symbol)}</div>
-                <div className="text-xs text-muted-foreground">≈ ${srcChainTokenIn.approximateUsdValue.toFixed(2)}</div>
-              </div>
-            </div>
+        <div className="space-y-4">
+          <Card className="mb-5 rounded-2xl rounded-bl-sm bg-card px-4 py-3">
+            <div className="text-base">{message}</div>
+          </Card>
 
-            <div className="flex items-center justify-between border-b pb-3">
-              <div className="font-medium">You receive</div>
-              <div className="text-right">
-                <div>{formatTokenAmount(dstChainTokenOut.recommendedAmount, dstChainTokenOut.decimals, dstChainTokenOut.symbol)}</div>
-                <div className="text-xs text-muted-foreground">≈ ${dstChainTokenOut.approximateUsdValue.toFixed(2)}</div>
-              </div>
-            </div>
-
-            <div className="space-y-2 text-sm text-muted-foreground">
-              <div className="flex justify-between">
-                <span>Solver gas costs</span>
+          <Card className="mt-4 w-96 rounded-tl-sm p-4">
+            <div className="text-base font-medium">Bridge Details</div>
+            <div className="mt-4 space-y-3 text-sm">
+              <div className="flex items-center justify-between border-b pb-3">
+                <div className="font-medium">You send</div>
                 <div className="text-right">
-                  <div>
-                    <span className="text-primary">{solverGasCosts}</span> <span className="text-xs">~${solverGasCostsUsd.toFixed(4)}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex justify-between">
-                <span>deBridge Fee</span>
-                <div className="text-right">
-                  <div>
-                    <span className="text-primary">{deBridgeFee}</span> <span className="text-xs">~${deBridgeFeeUsd.toFixed(4)}</span>
-                  </div>
+                  <div>{formatTokenAmount(srcChainTokenIn.amount, srcChainTokenIn.decimals, srcChainTokenIn.symbol)}</div>
+                  <div className="text-xs text-muted-foreground">≈ ${srcChainTokenIn.approximateUsdValue.toFixed(2)}</div>
                 </div>
               </div>
 
-              <div className="flex justify-between">
-                <span>Total spent</span>
+              <div className="flex items-center justify-between border-b pb-3">
+                <div className="font-medium">You receive</div>
                 <div className="text-right">
-                  <div>
-                    <span className="font-medium text-primary">
-                      {srcChainTokenIn.symbol === srcChainNativeSymbol ? (
-                        // If both are native tokens, combine the amounts
-                        formatFixedFee(
-                          (
-                            BigInt(srcChainTokenIn.amount) * BigInt(10) ** BigInt(18 - srcChainTokenIn.decimals) +
-                            BigInt(fixFee)
-                          ).toString(),
-                          18,
-                          srcChainNativeSymbol
-                        )
-                      ) : (
-                        // Otherwise show both separately
-                        <>
-                          {formatTokenAmount(srcChainTokenIn.amount, srcChainTokenIn.decimals, srcChainTokenIn.symbol)}
-                          {' + '}
-                          {formatFixedFee(fixFee, 18, srcChainNativeSymbol)}
-                        </>
-                      )}
-                    </span>{' '}
-                    <span className="text-xs">~${(srcChainTokenIn.approximateUsdValue + deBridgeFeeUsd).toFixed(4)}</span>
-                  </div>
+                  <div>{formatTokenAmount(dstChainTokenOut.recommendedAmount, dstChainTokenOut.decimals, dstChainTokenOut.symbol)}</div>
+                  <div className="text-xs text-muted-foreground">≈ ${dstChainTokenOut.approximateUsdValue.toFixed(2)}</div>
                 </div>
               </div>
 
-              {approximateDelay && (
+              <div className="space-y-2 text-sm text-muted-foreground">
                 <div className="flex justify-between">
-                  <span>Estimated time</span>
-                  <span>{getTimeDisplay(approximateDelay)}</span>
+                  <span>Solver gas costs</span>
+                  <div className="text-right">
+                    <div>
+                      <span className="text-primary">{solverGasCosts}</span>{' '}
+                      <span className="text-xs">~${solverGasCostsUsd.toFixed(4)}</span>
+                    </div>
+                  </div>
                 </div>
-              )}
+                <div className="flex justify-between">
+                  <span>deBridge Fee</span>
+                  <div className="text-right">
+                    <div>
+                      <span className="text-primary">{deBridgeFee}</span> <span className="text-xs">~${deBridgeFeeUsd.toFixed(4)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-between">
+                  <span>Total spent</span>
+                  <div className="text-right">
+                    <div>
+                      <span className="font-medium text-primary">
+                        {srcChainTokenIn.symbol === srcChainNativeSymbol ? (
+                          // If both are native tokens, combine the amounts
+                          formatFixedFee(
+                            (
+                              BigInt(srcChainTokenIn.amount) * BigInt(10) ** BigInt(18 - srcChainTokenIn.decimals) +
+                              BigInt(fixFee)
+                            ).toString(),
+                            18,
+                            srcChainNativeSymbol
+                          )
+                        ) : (
+                          // Otherwise show both separately
+                          <>
+                            {formatTokenAmount(srcChainTokenIn.amount, srcChainTokenIn.decimals, srcChainTokenIn.symbol)}
+                            {' + '}
+                            {formatFixedFee(fixFee, 18, srcChainNativeSymbol)}
+                          </>
+                        )}
+                      </span>{' '}
+                      <span className="text-xs">~${(srcChainTokenIn.approximateUsdValue + deBridgeFeeUsd).toFixed(4)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {approximateDelay && (
+                  <div className="flex justify-between">
+                    <span>Estimated time</span>
+                    <span>{getTimeDisplay(approximateDelay)}</span>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-          {tx && (
-            <div className="mt-4">
-              <BridgeButton
-                srcChainId={srcChainId}
-                dstChainId={dstChainId}
-                message="Bridge tokens"
-                data={tx}
-                messageId={toolInvocation.toolCallId}
-                tokenIn={{
-                  address: srcChainTokenIn.address,
-                  chainId: (args as BridgeToolArgs).srcChainId,
-                  symbol: srcChainTokenIn.symbol,
-                  decimals: srcChainTokenIn.decimals,
-                }}
-                tokenOut={{
-                  address: dstChainTokenOut.address,
-                  chainId: (args as BridgeToolArgs).dstChainId,
-                  symbol: dstChainTokenOut.symbol,
-                  decimals: dstChainTokenOut.decimals,
-                }}
-                amount={srcChainTokenIn.amount}
-              />
-            </div>
-          )}
-        </Card>
+            {tx && (
+              <div className="mt-4 border-t pt-2">
+                <BridgeButton
+                  srcChainId={srcChainId}
+                  dstChainId={dstChainId}
+                  data={tx}
+                  messageId={toolInvocation.toolCallId}
+                  tokenIn={{
+                    address: srcChainTokenIn.address,
+                    chainId: (args as BridgeToolArgs).srcChainId,
+                    symbol: srcChainTokenIn.symbol,
+                    decimals: srcChainTokenIn.decimals,
+                  }}
+                  tokenOut={{
+                    address: dstChainTokenOut.address,
+                    chainId: (args as BridgeToolArgs).dstChainId,
+                    symbol: dstChainTokenOut.symbol,
+                    decimals: dstChainTokenOut.decimals,
+                  }}
+                  amount={srcChainTokenIn.amount}
+                />
+              </div>
+            )}
+          </Card>
+        </div>
       );
     }
 
@@ -256,61 +263,53 @@ function ToolResponseBase({ toolInvocation }: ToolResponseProps) {
     case 'getQuote': {
       const result = toolInvocation.result as SwapQuoteResult;
 
+      if (!result.needsApproval) {
+        return null;
+      }
+
       return (
         <div className="space-y-4">
-          {/* Always show the content card if it exists */}
-          {result.content && (
-            <Card className="rounded-tl-sm p-4">
-              <div className="text-base">
-                <MarkdownContent content={result.content} />
+          <Card className="w-96 rounded-tl-sm p-4">
+            <div className="mb-7 text-base font-medium">Token Approval Required</div>
+            <div className="mt-4 space-y-3 text-sm">
+              <div className="flex items-center justify-between border-b pb-3">
+                <div className="font-medium">Token</div>
+                <div>{result.needsApproval.symbol}</div>
               </div>
-            </Card>
-          )}
 
-          {/* Show approval card if needed */}
-          {result.needsApproval && (
-            <Card className="w-96 rounded-tl-sm p-4">
-              <div className="mb-7 text-base font-medium">Token Approval Required</div>
-              <div className="mt-4 space-y-3 text-sm">
-                <div className="flex items-center justify-between border-b pb-3">
-                  <div className="font-medium">Token</div>
-                  <div>{result.needsApproval.symbol}</div>
-                </div>
+              <div className="flex items-center justify-between border-b pb-3">
+                <div className="font-medium">Amount</div>
+                <div>{formatTokenAmount(result.needsApproval.amount, result.needsApproval.decimals, result.needsApproval.symbol)}</div>
+              </div>
 
-                <div className="flex items-center justify-between border-b pb-3">
-                  <div className="font-medium">Amount</div>
-                  <div>{formatTokenAmount(result.needsApproval.amount, result.needsApproval.decimals, result.needsApproval.symbol)}</div>
-                </div>
-
-                <div className="mt-4 space-y-2">
-                  <p>Choose approval type:</p>
-                  <div className="flex gap-2">
-                    <div className="w-1/2">
-                      <ApproveButton
-                        fromAddress={result.needsApproval.fromAddress}
-                        toAddress={result.needsApproval.toAddress}
-                        spender={ASSISTANT_CONTRACT_ADDRESS}
-                        amount={result.needsApproval.amount}
-                        symbol={result.needsApproval.symbol}
-                        decimals={result.needsApproval.decimals}
-                      />
-                    </div>
-                    <div className="w-1/2">
-                      <ApproveButton
-                        fromAddress={result.needsApproval.fromAddress}
-                        toAddress={result.needsApproval.toAddress}
-                        spender={ASSISTANT_CONTRACT_ADDRESS}
-                        amount={maxUint256.toString()}
-                        symbol={result.needsApproval.symbol}
-                        decimals={result.needsApproval.decimals}
-                        isMaxApproval
-                      />
-                    </div>
+              <div className="mt-4 space-y-2">
+                <p>Choose approval type:</p>
+                <div className="flex gap-2">
+                  <div className="w-1/2">
+                    <ApproveButton
+                      fromAddress={result.needsApproval.fromAddress}
+                      toAddress={result.needsApproval.toAddress}
+                      spender={ASSISTANT_CONTRACT_ADDRESS}
+                      amount={result.needsApproval.amount}
+                      symbol={result.needsApproval.symbol}
+                      decimals={result.needsApproval.decimals}
+                    />
+                  </div>
+                  <div className="w-1/2">
+                    <ApproveButton
+                      fromAddress={result.needsApproval.fromAddress}
+                      toAddress={result.needsApproval.toAddress}
+                      spender={ASSISTANT_CONTRACT_ADDRESS}
+                      amount={maxUint256.toString()}
+                      symbol={result.needsApproval.symbol}
+                      decimals={result.needsApproval.decimals}
+                      isMaxApproval
+                    />
                   </div>
                 </div>
               </div>
-            </Card>
-          )}
+            </div>
+          </Card>
         </div>
       );
     }
