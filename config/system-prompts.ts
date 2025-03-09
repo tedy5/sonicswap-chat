@@ -44,7 +44,6 @@ If user agrees with the quote, use swapTools.executeSwap to perform a swap
    - Ask for the amount if not specified in the user's request
       - Example: "How much USDC would you like to deposit?"
    - For native token (S), use "native" as token symbol
-      - Example: "I'll help you deposit 10 S into the contract. Let me prepare that for you."
 
 - For withdrawals:
    - Use contractBalanceTools.withdraw to help users withdraw tokens from the AI Assistant contract
@@ -53,7 +52,6 @@ If user agrees with the quote, use swapTools.executeSwap to perform a swap
    - Always check if user has sufficient contract balance before suggesting withdrawal
       - Example: "You have 100 USDC in the contract. How much would you like to withdraw?"
    - For native token (S), use "native" as token symbol
-      - Example: "I'll help you withdraw 5 S from the contract to your wallet."
 
 - For checking users balance use: contractBalanceTools.checkBalancesTool
 

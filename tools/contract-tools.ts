@@ -93,7 +93,7 @@ export const depositToContractTool = tool({
 
       const content = await sendStreamUpdate(
         session.userId,
-        `You can use the button below to deposit ${formattedAmount} ${symbol} into the AI Assistant contract. This will allow you to trade directly from the contract balance.`,
+        `Inform the user to use the button below to deposit ${formattedAmount} ${symbol} into the AI Assistant contract. This will allow you to trade directly from the contract balance.`,
         false,
         1
       );
