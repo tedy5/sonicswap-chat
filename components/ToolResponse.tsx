@@ -210,7 +210,7 @@ function ToolResponseBase({ toolInvocation }: ToolResponseProps) {
       const { chainId, tokenAddress, symbol, decimals, message } = result;
       return (
         <div className="space-y-4">
-          <Card className="mb-5 rounded-2xl rounded-tl-sm bg-card px-4 py-3">
+          <Card className="mb-5 rounded-2xl rounded-bl-sm bg-card px-4 py-3">
             <div className="text-base">{message}</div>
           </Card>
 
@@ -247,7 +247,7 @@ function ToolResponseBase({ toolInvocation }: ToolResponseProps) {
               </div>
             </div>
 
-            <div className="mt-4">
+            <div className="mt-4 border-t pt-2">
               <AddTokenButton
                 chainId={chainId}
                 tokenAddress={tokenAddress}

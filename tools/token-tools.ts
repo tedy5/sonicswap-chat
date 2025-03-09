@@ -40,11 +40,6 @@ export const addTokenTool = tool({
       .describe(
         'Token identifier. Can be: 1) Token symbol (e.g., "USDC", "USDT", any other ticker/symbol..) 2) Token address in hex format (e.g., "0x123...def")'
       ),
-    message: z
-      .string()
-      .describe(
-        'A brief, friendly message explaining to the user that they can click the button below to add this token to their wallet and may need to approve a wallet popup. Include the token symbol in the message.'
-      ),
   }),
   execute: async function (params) {
     const session = (await checkAuth()) as SessionData;
@@ -59,15 +54,11 @@ export const addTokenTool = tool({
       } else {
         const resolvedAddress = getTokenAddress(chain.chainId, params.token);
         if (resolvedAddress === null || resolvedAddress === zeroAddress) {
-          const errorMessage = `Could not find token "${params.token}" on ${params.chainName}. Please try:
-            1. Using the full token contract address
-            2. Double-checking the token symbol
-            3. Verifying the token exists on ${params.chainName}`;
+          const errorMessage = `Could not find token "${params.token}" on ${params.chainName}. Please try provide full token contract addressand verify the token exists on ${params.chainName}`;
 
-          await sendStreamUpdate(session.userId, errorMessage);
           return {
             type: 'system',
-            message: 'failed',
+            message: errorMessage,
           };
         }
         tokenAddress = resolvedAddress;
@@ -79,25 +70,25 @@ export const addTokenTool = tool({
           getTokenSymbol(chain.chainId, tokenAddress),
         ]);
 
+        const message = await sendStreamUpdate(
+          session.userId,
+          'A brief, friendly message explaining to the user that they can click the button below to add this token to their wallet and may need to approve a wallet popup. Include the token symbol in the message.',
+          false,
+          1
+        );
+
         return {
           chainId: chain.chainId,
           tokenAddress: tokenAddress as Address,
           symbol: symbol,
           decimals,
-          message: params.message,
+          message,
+          shouldAbort: true,
         };
       } catch (error) {
-        const errorMessage = `Unable to fetch token details. This might mean:
-          1. The token contract is not responding
-          2. The token might be deprecated or non-standard
-          3. The network might be experiencing issues
-
-          Please try again or use a different token.`;
-
-        await sendStreamUpdate(session.userId, errorMessage);
         return {
           type: 'system',
-          message: 'failed',
+          message: 'Please try again or use a different token.',
         };
       }
     } catch (error) {
@@ -106,10 +97,9 @@ export const addTokenTool = tool({
         params,
       });
 
-      await sendStreamUpdate(session.userId, 'Token service is temporarily unavailable. Please try again later.');
       return {
         type: 'system',
-        message: 'error',
+        message: 'Token service is temporarily unavailable. Please try again later.',
       };
     }
   },
