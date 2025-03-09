@@ -9,7 +9,7 @@ import { MarkdownContent } from '@/components/MarkdownContent';
 import { Card } from '@/components/ui/card';
 import { ASSISTANT_CONTRACT_ADDRESS } from '@/config/contracts';
 import { AddTokenResult, BridgeSuccessResult, BridgeToolArgs, SwapQuoteResult, SystemResult, type ToolResponseProps } from '@/types/tools';
-import type { DepositResult, WithdrawResult } from '@/types/tools';
+import type { DepositResult } from '@/types/tools';
 import { getChainName } from '@/utils/chains';
 import { DepositButton } from './DepositButton';
 
@@ -388,7 +388,6 @@ function ToolResponseBase({ toolInvocation }: ToolResponseProps) {
                       token={result.deposit.token}
                       amount={result.deposit.amount}
                       isNative={result.deposit.isNative}
-                      message={result.deposit.message}
                     />
                   )}
                 </div>
@@ -397,18 +396,6 @@ function ToolResponseBase({ toolInvocation }: ToolResponseProps) {
           )}
         </div>
       );
-    }
-
-    case 'withdraw': {
-      const result = toolInvocation.result as WithdrawResult;
-
-      return result.content ? (
-        <Card className="rounded-tl-sm p-4">
-          <div className="text-base">
-            <MarkdownContent content={result.content} />
-          </div>
-        </Card>
-      ) : null;
     }
 
     default:

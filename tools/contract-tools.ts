@@ -46,22 +46,14 @@ export const depositToContractTool = tool({
       } else {
         const resolvedAddress = getTokenAddress(chainId, params.token);
         if (!resolvedAddress) {
-          const content = await sendStreamUpdate(
-            session.userId,
-            `I couldn't find the token "${params.token}". Please use "native" for native token or provide the token's contract address.`,
-            false
-          );
-          return { success: false, content };
+          const content = `I couldn't find the token "${params.token}". Please use "native" for native token or provide the token's contract address.`;
+          return { success: false, message: content };
         }
         fromTokenAddress = resolvedAddress;
       }
     } catch (error) {
-      const content = await sendStreamUpdate(
-        session.userId,
-        `There was an error resolving the token: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        false
-      );
-      return { success: false, content };
+      const content = `There was an error resolving the token: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      return { success: false, message: content };
     }
 
     try {
@@ -81,6 +73,7 @@ export const depositToContractTool = tool({
           );
           return {
             success: true,
+            shouldAbort: true,
             content,
             deposit: {
               token: fromTokenAddress,
@@ -88,7 +81,6 @@ export const depositToContractTool = tool({
               symbol,
               decimals,
               isNative: false,
-              message: `Deposit ${formatUnits(BigInt(amountIn), decimals)} ${symbol} to AI Assistant contract`,
             },
           };
         }
@@ -99,26 +91,29 @@ export const depositToContractTool = tool({
         fromTokenAddress === zeroAddress ? 'S' : await getTokenSymbol(chainId, fromTokenAddress as Address);
       const formattedAmount = formatUnits(BigInt(amountIn), decimals);
 
+      const content = await sendStreamUpdate(
+        session.userId,
+        `You can use the button below to deposit ${formattedAmount} ${symbol} into the AI Assistant contract. This will allow you to trade directly from the contract balance.`,
+        false,
+        1
+      );
+
       // Return the response that will be shown in ToolResponse
       return {
         success: true,
-        content: `Ready to deposit ${formattedAmount} ${symbol} into the AI Assistant contract. This will allow you to trade directly from the contract balance.`,
+        shouldAbort: true,
+        content,
         deposit: {
           token: fromTokenAddress,
           amount: amountIn,
           symbol,
           decimals,
           isNative: fromTokenAddress === zeroAddress,
-          message: `Deposit ${formattedAmount} ${symbol} to AI Assistant contract`,
         },
       };
     } catch (error) {
-      const content = await sendStreamUpdate(
-        session.userId,
-        `Sorry, there was an error preparing your deposit: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        false
-      );
-      return { success: false, content };
+      const content = `Sorry, there was an error preparing your deposit: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      return { success: false, message: content };
     }
   },
 });
@@ -146,12 +141,8 @@ export const withdrawFromContractTool = tool({
       } else {
         const resolvedAddress = getTokenAddress(chainId, params.token);
         if (!resolvedAddress) {
-          const content = await sendStreamUpdate(
-            session.userId,
-            `I couldn't find the token "${params.token}". Please use "native" for native token or provide the token's contract address.`,
-            false
-          );
-          return { success: false, content };
+          const content = `I couldn't find the token "${params.token}". Please use "native" for native token or provide the token's contract address.`;
+          return { success: false, message: content };
         }
         tokenAddress = resolvedAddress;
       }
@@ -166,12 +157,8 @@ export const withdrawFromContractTool = tool({
         if (!contractBalance || contractBalance.amount === 0n) {
           // Use 'S' for display when it's WETH
           const symbol = tokenAddress === wAddress ? 'S' : await getTokenSymbol(chainId, tokenAddress as Address);
-          const content = await sendStreamUpdate(
-            session.userId,
-            `You don't have any ${symbol} in the contract to withdraw.`,
-            false
-          );
-          return { success: false, content };
+          const content = `You don't have any ${symbol} in the contract to withdraw.`;
+          return { success: false, message: content };
         }
         amountIn = contractBalance.amount.toString();
       } else {
@@ -183,12 +170,8 @@ export const withdrawFromContractTool = tool({
         const contractBalance = await getContractBalance(session.address as Address, tokenAddress as Address);
         if (!contractBalance || contractBalance.amount < BigInt(amountIn)) {
           const symbol = tokenAddress === wAddress ? 'S' : await getTokenSymbol(chainId, tokenAddress as Address);
-          const content = await sendStreamUpdate(
-            session.userId,
-            `Insufficient balance. You have ${formatUnits(contractBalance?.amount || 0n, decimals)} ${symbol} in the contract.`,
-            false
-          );
-          return { success: false, content };
+          const content = `Insufficient balance. You have ${formatUnits(contractBalance?.amount || 0n, decimals)} ${symbol} in the contract.`;
+          return { success: false, message: content };
         }
       }
 
@@ -196,35 +179,22 @@ export const withdrawFromContractTool = tool({
       const withdrawResult = await executeWithdraw(session.address as Address, tokenAddress as Address, amountIn);
 
       if (!withdrawResult.success || !withdrawResult.data) {
-        const content = await sendStreamUpdate(
-          session.userId,
-          `Sorry, the withdrawal failed: ${withdrawResult.error}`,
-          false
-        );
-        return { success: false, content };
+        const content = `Sorry, the withdrawal failed: ${withdrawResult.error}`;
+        return { success: false, message: content };
       }
 
       // Get symbol for display - still show 'S' for wS
       const symbol = tokenAddress === wAddress ? 'S' : await getTokenSymbol(chainId, tokenAddress as Address);
       const formattedAmount = formatUnits(BigInt(amountIn), decimals);
-
-      const content = await sendStreamUpdate(
-        session.userId,
-        `Successfully processed withdrawal of ${formattedAmount} ${symbol} from the AI Assistant contract to your wallet. [View on Sonicscan](https://sonicscan.org/tx/${withdrawResult.data.hash}) `,
-        false
-      );
+      const message = `Successfully processed withdrawal of ${formattedAmount} ${symbol} from the AI Assistant contract to your wallet. [View on Sonicscan](https://sonicscan.org/tx/${withdrawResult.data.hash}) `;
 
       return {
         success: true,
-        content,
+        message: message,
       };
     } catch (error) {
-      const content = await sendStreamUpdate(
-        session.userId,
-        `Sorry, there was an error preparing your withdrawal: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        false
-      );
-      return { success: false, content };
+      const content = `Sorry, there was an error preparing your withdrawal: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      return { success: false, message: content };
     }
   },
 });
@@ -271,7 +241,7 @@ export const checkBalancesTool = tool({
       };
     } catch (error) {
       const content = `Sorry, there was an error checking your balances: ${error instanceof Error ? error.message : 'Unknown error'}`;
-      return { success: false, content };
+      return { success: false, message: content };
     }
   },
 });

@@ -96,30 +96,28 @@ export async function POST(req: Request) {
               // Log tool results, specifically looking for bridge tool results
               if (event.toolResults?.length) {
                 for (const result of event.toolResults) {
-                  if (result.toolName === 'bridge') {
-                    // Check if we should abort based on the flag from bridge-tools
-                    if (result.result.shouldAbort) {
-                      try {
-                        // Save the current state
-                        const existingMessages = await loadChat(userId);
-                        const updatedMessages = appendResponseMessages({
-                          messages: existingMessages,
-                          responseMessages: event.response.messages,
-                        });
+                  // Check if the result has a shouldAbort property and it's true
+                  if ('shouldAbort' in result.result && result.result.shouldAbort === true) {
+                    try {
+                      // Save the current state
+                      const existingMessages = await loadChat(userId);
+                      const updatedMessages = appendResponseMessages({
+                        messages: existingMessages,
+                        responseMessages: event.response.messages,
+                      });
 
-                        await saveChat({
-                          userId,
-                          messages: updatedMessages,
-                        });
-                        console.log('Messages saved successfully before abort');
+                      await saveChat({
+                        userId,
+                        messages: updatedMessages,
+                      });
+                      console.log('Messages saved successfully before abort');
 
-                        // Abort after saving
-                        abortController.abort();
-                      } catch (error) {
-                        console.error('Error saving messages before abort:', error);
-                      }
-                      break;
+                      // Abort after saving
+                      abortController.abort();
+                    } catch (error) {
+                      console.error('Error saving messages before abort:', error);
                     }
+                    break;
                   }
                 }
               }

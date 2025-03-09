@@ -11,7 +11,7 @@ import { ASSISTANT_CONTRACT_ADDRESS } from '@/config/contracts';
 import type { DepositButtonProps } from '@/types/tools';
 import { getChainName } from '@/utils/chains';
 
-export function DepositButton({ token, amount, isNative, message }: DepositButtonProps) {
+export function DepositButton({ token, amount, isNative }: DepositButtonProps) {
   const { chain } = useAccount();
   const { switchChain } = useSwitchChain();
   const { data: walletClient } = useWalletClient();
@@ -141,7 +141,6 @@ export function DepositButton({ token, amount, isNative, message }: DepositButto
 
   return (
     <div className="space-y-2">
-      <p>{message}</p>
       <Button
         size="lg"
         onClick={handleClick}

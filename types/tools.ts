@@ -103,6 +103,7 @@ export interface SwapQuoteResult {
 
 export interface DepositResult {
   success: boolean;
+  shouldAbort: boolean;
   content: string;
   needsApproval?: {
     fromAddress: Address;
@@ -117,7 +118,6 @@ export interface DepositResult {
     symbol: string;
     decimals: number;
     isNative: boolean;
-    message: string;
   };
 }
 
@@ -147,7 +147,6 @@ export interface DepositButtonProps {
   token: Address;
   amount: string;
   isNative: boolean;
-  message: string;
 }
 
 export interface LimitOrder {
