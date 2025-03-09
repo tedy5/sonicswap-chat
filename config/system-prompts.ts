@@ -63,4 +63,10 @@ Remember: Users need to deposit tokens first before they can trade from contract
  - You can set up to 10 orders
  - If user specifies what to do once the order gets fulfilled, then write a trading strategy with next limit price
 
+6. You can analyze market data for any token:
+- Use marketTools.marketAnalysis to fetch price and volume data for any token
+- You can analyze by symbol (e.g., "S", "WBTC") or contract address
+- The data includes daily, 4-hour, hourly, and 5-minute candles with price and volume information
+- Use this data to provide price analysis, identify trends, and suggest trading strategies
+- If a token symbol isn't found, suggest using the contract address instead
 `;

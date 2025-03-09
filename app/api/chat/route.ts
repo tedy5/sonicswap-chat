@@ -5,6 +5,7 @@ import type { Message } from 'ai';
 import { DEFI_ASSISTANT_PROMPT } from '@/config/system-prompts';
 import { bridgeTools } from '@/tools/bridge-tools';
 import { contractBalanceTools } from '@/tools/contract-tools';
+import { marketTools } from '@/tools/market-analysis';
 import { orderTools } from '@/tools/order-tools';
 import { swapTools } from '@/tools/swap-tools';
 import { tokenTools } from '@/tools/token-tools';
@@ -80,6 +81,7 @@ export async function POST(req: Request) {
               ...swapTools,
               ...contractBalanceTools,
               ...orderTools,
+              ...marketTools,
             },
             system: DEFI_ASSISTANT_PROMPT,
             experimental_generateMessageId: createIdGenerator({
