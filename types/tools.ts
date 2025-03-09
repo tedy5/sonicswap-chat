@@ -184,15 +184,29 @@ export type ToolResults = {
 };
 
 // Tool invocation types
-export interface ToolInvocation {
+export interface BaseToolInvocation {
   toolName: keyof ToolResults | string;
   toolCallId: string;
-  state: 'partial-call' | 'call' | 'result';
   step?: number;
   args: ToolArgs[keyof ToolArgs] | Record<string, any>;
-  result?: ToolResults[keyof ToolResults] | Record<string, any>;
-  content?: string;
 }
+
+export interface PartialCallToolInvocation extends BaseToolInvocation {
+  state: 'partial-call';
+  // No result property in partial-call state
+}
+
+export interface CallToolInvocation extends BaseToolInvocation {
+  state: 'call';
+  // No result property in call state
+}
+
+export interface ResultToolInvocation extends BaseToolInvocation {
+  state: 'result';
+  result: ToolResults[keyof ToolResults] | Record<string, any>;
+}
+
+export type ToolInvocation = PartialCallToolInvocation | CallToolInvocation | ResultToolInvocation;
 
 export interface ToolResponseProps {
   toolInvocation: ToolInvocation;

@@ -118,18 +118,22 @@ export function Chat({ userId, initialMessages, isAuthenticated }: ChatProps) {
     // 1. There's no content yet, regardless of tool invocation state
     if (lastMessage.role === 'assistant') {
       const hasContent = !!lastMessage.content;
+      const hasToolInvocationContent = lastMessage.toolInvocations?.some(
+        (tool) => tool.state === 'result' && tool.result && 'content' in tool.result && !!tool.result.content
+      );
 
       // More detailed logging
       console.log('Assistant message state:', {
         hasContent,
+        hasToolInvocationContent,
         hasToolInvocationsInProgress: lastMessage.toolInvocations?.some((tool) => tool.state === 'partial-call' || tool.state === 'call'),
         toolStates: lastMessage.toolInvocations?.map((t) => t.state),
-        isWaiting: !hasContent,
+        isWaiting: !hasContent && !hasToolInvocationContent,
         timestamp: new Date().toISOString(),
       });
 
-      // Show typing indicator as long as there's no content yet
-      return !hasContent;
+      // Show typing indicator as long as there's no content yet and no tool invocation content
+      return !hasContent && !hasToolInvocationContent;
     }
 
     return false;
@@ -235,7 +239,7 @@ export function Chat({ userId, initialMessages, isAuthenticated }: ChatProps) {
       if (!isUserMessage) {
         // Show typing indicator when:
         // 1. It's the last message AND
-        // 2. We're waiting for a response (which now means no content yet)
+        // 2. We're waiting for a response (which now means no content yet and no tool invocation content)
         if (isLastMessage && isWaitingForResponse()) {
           return (
             <div className="flex flex-col items-start">
@@ -246,12 +250,17 @@ export function Chat({ userId, initialMessages, isAuthenticated }: ChatProps) {
           );
         }
 
-        // Skip empty messages that aren't waiting
-        if (!message.content && (!message.toolInvocations || message.toolInvocations.length === 0)) {
+        // Check if there's any tool invocation with content
+        const hasToolInvocationContent = message.toolInvocations?.some(
+          (tool) => tool.state === 'result' && tool.result && 'content' in tool.result && !!tool.result.content
+        );
+
+        // Skip empty messages that aren't waiting and don't have tool invocation content
+        if (!message.content && (!message.toolInvocations || message.toolInvocations.length === 0 || !hasToolInvocationContent)) {
           return null;
         }
 
-        // Normal message with content
+        // Normal message with content or tool invocation content
         return (
           <div className="flex flex-col items-start">
             <AIMessage
