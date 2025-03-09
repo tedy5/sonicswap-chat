@@ -9,13 +9,20 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { userId, message } = await request.json();
+    const { userId, message, shouldSave, maxContextMessages, skipHistory, promptType } = await request.json();
 
     if (!userId || !message) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    await sendStreamUpdate(userId, message);
+    await sendStreamUpdate(
+      userId,
+      message,
+      shouldSave !== undefined ? shouldSave : true,
+      maxContextMessages !== undefined ? maxContextMessages : 2,
+      skipHistory !== undefined ? skipHistory : false,
+      promptType || 'stream'
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -115,24 +115,21 @@ export function Chat({ userId, initialMessages, isAuthenticated }: ChatProps) {
     }
 
     // For assistant messages, we're waiting if:
-    // 1. There's no content yet, OR
-    // 2. There are tool invocations in progress
+    // 1. There's no content yet, regardless of tool invocation state
     if (lastMessage.role === 'assistant') {
       const hasContent = !!lastMessage.content;
-      const hasToolInvocationsInProgress = lastMessage.toolInvocations?.some(
-        (tool) => tool.state === 'partial-call' || tool.state === 'call'
-      );
 
       // More detailed logging
       console.log('Assistant message state:', {
         hasContent,
-        hasToolInvocationsInProgress,
+        hasToolInvocationsInProgress: lastMessage.toolInvocations?.some((tool) => tool.state === 'partial-call' || tool.state === 'call'),
         toolStates: lastMessage.toolInvocations?.map((t) => t.state),
-        isWaiting: !hasContent || hasToolInvocationsInProgress,
+        isWaiting: !hasContent,
         timestamp: new Date().toISOString(),
       });
 
-      return !hasContent && (hasToolInvocationsInProgress || !lastMessage.toolInvocations);
+      // Show typing indicator as long as there's no content yet
+      return !hasContent;
     }
 
     return false;
@@ -238,13 +235,8 @@ export function Chat({ userId, initialMessages, isAuthenticated }: ChatProps) {
       if (!isUserMessage) {
         // Show typing indicator when:
         // 1. It's the last message AND
-        // 2. We're waiting for a response AND
-        // 3. Either there's no content yet OR there are tool invocations in progress
-        const hasToolInvocationsInProgress = message.toolInvocations?.some(
-          (tool) => tool.state === 'partial-call' || tool.state === 'call'
-        );
-
-        if (isLastMessage && isWaitingForResponse() && (!message.content || hasToolInvocationsInProgress)) {
+        // 2. We're waiting for a response (which now means no content yet)
+        if (isLastMessage && isWaitingForResponse()) {
           return (
             <div className="flex flex-col items-start">
               <Card className="max-w-xl rounded-2xl rounded-tl-sm bg-card px-5 py-4">
