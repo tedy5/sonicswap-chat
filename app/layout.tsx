@@ -16,9 +16,23 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'SonicSwap AI Chat Agent',
+  title: 'SonicSwap DEX | AI Trading Assistant',
   description:
-    'AI assistant for SonicSwap - helping you navigate DeFi trading, swaps, and blockchain interactions with natural conversation.',
+    'SonicSwap is a decentralized exchange on Sonic Network with an intelligent AI Trading Assistant. Swap tokens, bridge assets, set limit orders, and analyze market trends through natural conversation.',
+  keywords: 'SonicSwap, DEX, Sonic Network, AI Trading Assistant, DeFi, token swap, crypto trading, limit orders',
+  openGraph: {
+    title: 'SonicSwap DEX | AI Trading Assistant',
+    description:
+      'Trade on Sonic Network with our intelligent AI assistant. Swap tokens, analyze markets, and set limit orders through natural conversation.',
+    type: 'website',
+    locale: 'en_US',
+    siteName: 'SonicSwap',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'SonicSwap DEX | AI Trading Assistant',
+    description: 'Trade on Sonic Network with our intelligent AI assistant',
+  },
 };
 
 export default async function RootLayout({
