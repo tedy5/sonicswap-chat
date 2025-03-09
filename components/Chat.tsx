@@ -303,24 +303,27 @@ export function Chat({ userId, initialMessages, isAuthenticated }: ChatProps) {
 
   const ChatInput = useMemo(
     () => (
-      <div className="fixed inset-x-0 bottom-10 w-full pr-2">
+      <div className="fixed inset-x-0 bottom-10 w-full px-4 sm:px-6">
         <div className="mx-auto w-full max-w-3xl">
-          <Card className="p-2">
+          <Card className="border shadow-sm">
             <form
               onSubmit={handleSubmit}
-              className="flex"
+              className="flex items-center p-2"
             >
               <Input
                 value={input}
                 onChange={handleInputChange}
-                placeholder="Ask me anything..."
-                className="focus-visible:ring-none mr-2 w-[95%] border-0 border-transparent ring-0 ring-offset-0 focus:border-transparent focus:outline-none focus:ring-0 focus-visible:border-none focus-visible:outline-none focus-visible:ring-0"
+                placeholder="Type your message here..."
+                className="mr-3 flex-1 border-0 bg-transparent focus-visible:ring-0"
+                disabled={isLoading || !isAuthenticated}
               />
               <Button
                 type="submit"
                 disabled={!input.trim() || isLoading || !isAuthenticated}
+                className="h-9 w-9 rounded-full p-0"
+                aria-label="Send message"
               >
-                <IconArrowUp />
+                <IconArrowUp className="h-4 w-4" />
               </Button>
             </form>
           </Card>
