@@ -68,7 +68,7 @@ export const depositToContractTool = tool({
           const symbol = await getTokenSymbol(chainId, fromTokenAddress as Address);
           const content = await sendStreamUpdate(
             session.userId,
-            "You'll need to approve the token allowance first. This is a one-time permission needed for depositing tokens to the assistant contract.",
+            "You'll need to approve the token allowance first. This is a one-time permission needed for depositing tokens to the assistant contract. Please use the button below to approve.",
             false
           );
           return {

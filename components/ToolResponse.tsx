@@ -269,6 +269,9 @@ function ToolResponseBase({ toolInvocation }: ToolResponseProps) {
 
       return (
         <div className="space-y-4">
+          <Card className="mb-5 rounded-2xl rounded-bl-sm bg-card px-4 py-3">
+            <div className="text-base">{result.content}</div>
+          </Card>
           <Card className="w-96 rounded-tl-sm p-4">
             <div className="mb-7 text-base font-medium">Token Approval Required</div>
             <div className="mt-4 space-y-3 text-sm">
@@ -314,18 +317,6 @@ function ToolResponseBase({ toolInvocation }: ToolResponseProps) {
       );
     }
 
-    case 'executeSwap': {
-      const result = toolInvocation.result as SwapQuoteResult;
-
-      return result.content ? (
-        <Card className="rounded-tl-sm p-4">
-          <div className="text-base">
-            <MarkdownContent content={result.content} />
-          </div>
-        </Card>
-      ) : null;
-    }
-
     case 'deposit': {
       const result = toolInvocation.result as DepositResult;
 
@@ -333,7 +324,7 @@ function ToolResponseBase({ toolInvocation }: ToolResponseProps) {
         <div className="space-y-4">
           {/* Always show the content card if it exists */}
           {result.content && (
-            <Card className="rounded-tl-sm p-4">
+            <Card className="rounded-bl-sm p-4">
               <div className="text-base">
                 <MarkdownContent content={result.content} />
               </div>

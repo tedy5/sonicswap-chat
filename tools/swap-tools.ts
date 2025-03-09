@@ -44,21 +44,13 @@ export const getSwapQuoteTool = tool({
       } else {
         const resolvedAddress = getTokenAddress(chainId, params.fromToken);
         if (!resolvedAddress) {
-          const content = await sendStreamUpdate(
-            session.userId,
-            `I couldn't find the token "${params.fromToken}". Please provide the token's contract address.`,
-            false
-          );
+          const content = `I couldn't find the token "${params.fromToken}". Please provide the token's contract address.`;
           return { success: false, content };
         }
         fromTokenAddress = resolvedAddress;
       }
     } catch (error) {
-      const content = await sendStreamUpdate(
-        session.userId,
-        `There was an error resolving the source token: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        false
-      );
+      const content = `There was an error resolving the source token: ${error instanceof Error ? error.message : 'Unknown error'}`;
       return { success: false, content };
     }
 
@@ -72,21 +64,13 @@ export const getSwapQuoteTool = tool({
       } else {
         const resolvedAddress = getTokenAddress(chainId, params.toToken);
         if (!resolvedAddress) {
-          const content = await sendStreamUpdate(
-            session.userId,
-            `I couldn't find the token "${params.toToken}". Please provide the token's contract address.`,
-            false
-          );
+          const content = `I couldn't find the token "${params.toToken}". Please provide the token's contract address.`;
           return { success: false, content };
         }
         toTokenAddress = resolvedAddress;
       }
     } catch (error) {
-      const content = await sendStreamUpdate(
-        session.userId,
-        `There was an error resolving the destination token: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        false
-      );
+      const content = `There was an error resolving the destination token: ${error instanceof Error ? error.message : 'Unknown error'}`;
       return { success: false, content };
     }
 
@@ -99,9 +83,6 @@ export const getSwapQuoteTool = tool({
       const contractBalance = await getContractBalances(session.userId, fromTokenAddress as Address);
       const useContract = contractBalance && contractBalance.amount > 0n ? 'contract' : 'wallet';
 
-      console.log('Fromtokenaddr: ' + fromTokenAddress);
-      console.log('contractamount: ' + contractBalance);
-
       // If using wallet, check for approval
       if (useContract === 'wallet') {
         const balances = await getBalances(session.userId, session.address as Address, fromTokenAddress as Address);
@@ -110,10 +91,12 @@ export const getSwapQuoteTool = tool({
           const content = await sendStreamUpdate(
             session.userId,
             "You'll need to approve the token allowance first. This is a one-time permission needed for the assistant to swap tokens on your behalf.",
-            false
+            false,
+            1
           );
           return {
             success: true,
+            shouldAbort: true,
             content,
             needsApproval: {
               fromAddress: fromTokenAddress as Address,
@@ -130,23 +113,13 @@ export const getSwapQuoteTool = tool({
       const quoteResult = await getQuote(fromTokenAddress as Address, toTokenAddress as Address, amountIn);
 
       if (!quoteResult.success || !quoteResult.data) {
-        const content = await sendStreamUpdate(
-          session.userId,
-          `Sorry, I couldn't get a quote for your swap: ${quoteResult.error || 'Unknown error'}`,
-          false
-        );
+        const content = `Sorry, I couldn't get a quote for your swap: ${quoteResult.error || 'Unknown error'}`;
         return { success: false, content };
       }
 
       const toDecimals = await getTokenDecimals(chainId, toTokenAddress);
       const estimatedAmountOut = Number(formatUnits(BigInt(quoteResult.data.expectedOutput), toDecimals)).toFixed(4);
-
-      const content = await sendStreamUpdate(
-        session.userId,
-        `THIS IS RESPOND FROM QUOTE: Inform the user: You're set to receive approximately ${estimatedAmountOut} ${params.toToken}. Would you like to proceed with the swap? 🚀`,
-        false,
-        1
-      );
+      const content = `You're set to receive approximately ${estimatedAmountOut} ${params.toToken}.`;
 
       console.log('Return: ', {
         success: true,
@@ -170,11 +143,7 @@ export const getSwapQuoteTool = tool({
         },
       };
     } catch (error) {
-      const content = await sendStreamUpdate(
-        session.userId,
-        `Sorry, there was an error preparing your swap: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        false
-      );
+      const content = `Sorry, there was an error preparing your swap: ${error instanceof Error ? error.message : 'Unknown error'}`;
       return { success: false, content };
     }
   },
@@ -277,10 +246,18 @@ export const executeSwapTool = tool({
         if (balances.walletBalance && BigInt(balances.walletBalance.allowance) < BigInt(amountIn)) {
           const symbol = await getTokenSymbol(chainId, fromTokenAddress as Address);
           const decimals = await getTokenDecimals(chainId, fromTokenAddress);
+
+          const content = await sendStreamUpdate(
+            session.userId,
+            "You'll need to approve the token allowance first. Please use the button below to approve.",
+            false,
+            1
+          );
+
           return {
-            success: false,
-            content:
-              "You'll need to approve the token allowance first. This is a one-time permission needed for the assistant to swap tokens on your behalf.",
+            success: true,
+            content,
+            shouldAbort: true,
             needsApproval: {
               fromAddress: fromTokenAddress as Address,
               toAddress: toTokenAddress as Address,
@@ -309,15 +286,7 @@ export const executeSwapTool = tool({
       const swapResult = await executeSwap(quoteResult.data, session.address as Address, useContract === 'contract');
 
       if (!swapResult.success || !swapResult.data) {
-        const content = await sendStreamUpdate(
-          session.userId,
-          `Sorry, the swap failed: ${swapResult.error}${
-            swapResult.data?.hash
-              ? `\n\nYou can check the transaction here: [View on Sonicscan](https://sonicscan.org/tx/${swapResult.data.hash})`
-              : ''
-          }`,
-          false
-        );
+        const content = `Sorry, the swap failed: ${swapResult.error}`;
         return { success: false, content };
       }
 
@@ -332,21 +301,15 @@ export const executeSwapTool = tool({
         message = `Inform the user that the swap from their wallet was successful! Write this in new line: [View on Sonicscan](https://sonicscan.org/tx/${swapResult.data.hash} and then nice message in new line after that.`;
       }
 
-      const content = await sendStreamUpdate(session.userId, message, false);
-
       return {
         success: true,
-        content,
+        message: message,
       };
     } catch (error) {
       // Handle approval needed case
-      console.log('Error1: ', error);
       if (error && typeof error === 'object' && 'type' in error && error.type === 'approval_needed') {
-        const content = await sendStreamUpdate(
-          session.userId,
-          "You'll need to approve the token allowance first. This is a one-time permission needed for the assistant to swap tokens on your behalf.",
-          false
-        );
+        const content =
+          "You'll need to approve the token allowance first. This is a one-time permission needed for the assistant to swap tokens on your behalf.";
         return {
           success: false,
           content,
@@ -354,12 +317,7 @@ export const executeSwapTool = tool({
       }
 
       // Handle other errors
-      console.log('Error2: ', error);
-      const content = await sendStreamUpdate(
-        session.userId,
-        `Sorry, there was an unexpected error with your swap: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        false
-      );
+      const content = `Sorry, there was an unexpected error with your swap: ${error instanceof Error ? error.message : 'Unknown error'}`;
       return { success: false, content };
     }
   },
