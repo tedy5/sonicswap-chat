@@ -21,10 +21,10 @@ export function Header() {
             variant="ghost"
           >
             <Link
-              href="/chat"
+              href="/assistant"
               className="text-sm font-semibold"
             >
-              Chat
+              AI Assistant
             </Link>
           </Button>
         </nav>
