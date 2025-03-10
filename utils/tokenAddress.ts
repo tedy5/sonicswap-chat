@@ -9491,9 +9491,12 @@ export const TOKEN_ADDRESSES: TokenAddresses = {
   },
   '146': {
     usdc: '0x29219dd400f2bf60e5a23d13be72b486d4038894',
+    'usdc.e': '0x29219dd400f2bf60e5a23d13be72b486d4038894',
     usdt: '0x6047828dc181963ba44974801ff68e538da5eaf9',
     weth: '0x50c42deacd8fc9773493ed674b675be577f2634b',
     ws: '0x039e2fb66102314ce7b64ce5ce3e5183bc94ad38',
+    s: '0x039e2fb66102314ce7b64ce5ce3e5183bc94ad38',
+    sonic: '0x039e2fb66102314ce7b64ce5ce3e5183bc94ad38',
     anon: '0x79bbf4508b1391af3a0f4b30bb5fc4aa9ab0e07c',
     scusd: '0xd3dce716f3ef535c5ff8d041c1a41c3bd89b97ae',
     wagmi: '0x0e0ce4d450c705f8a0b6dd9d5123e3df2787d16b',
