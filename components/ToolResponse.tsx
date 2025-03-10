@@ -9,7 +9,7 @@ import { MarkdownContent } from '@/components/MarkdownContent';
 import { Card } from '@/components/ui/card';
 import { ASSISTANT_CONTRACT_ADDRESS } from '@/config/contracts';
 import { AddTokenResult, BridgeSuccessResult, BridgeToolArgs, SwapQuoteResult, SystemResult, type ToolResponseProps } from '@/types/tools';
-import type { DepositResult } from '@/types/tools';
+import type { DepositResult, ResultToolInvocation } from '@/types/tools';
 import { getChainName } from '@/utils/chains';
 import { DepositButton } from './DepositButton';
 
@@ -63,10 +63,15 @@ function ToolResponseBase({ toolInvocation }: ToolResponseProps) {
     step: toolInvocation.step,
     toolName: toolInvocation.toolName,
     args: toolInvocation.args,
-    ...(toolInvocation.state === 'result' && { result: toolInvocation.result }),
+    ...(toolInvocation.state === 'result' && { result: (toolInvocation as ResultToolInvocation).result }),
   });
 
-  const { toolName, args, result } = toolInvocation;
+  // Return early if not in result state
+  if (toolInvocation.state !== 'result') {
+    return null;
+  }
+
+  const { toolName, args, result } = toolInvocation as ResultToolInvocation;
 
   if (!result || (result as SystemResult).type === 'system') {
     return null;
@@ -395,10 +400,21 @@ function ToolResponseBase({ toolInvocation }: ToolResponseProps) {
 }
 
 export const ToolResponse = memo(ToolResponseBase, (prevProps, nextProps) => {
-  return (
+  // Basic comparison for all ToolInvocation properties
+  const basicPropsMatch =
     prevProps.toolInvocation.state === nextProps.toolInvocation.state &&
     prevProps.toolInvocation.toolCallId === nextProps.toolInvocation.toolCallId &&
-    prevProps.toolInvocation.step === nextProps.toolInvocation.step &&
-    JSON.stringify(prevProps.toolInvocation.result) === JSON.stringify(nextProps.toolInvocation.result)
-  );
+    prevProps.toolInvocation.step === nextProps.toolInvocation.step;
+
+  // Only compare results if both are in 'result' state
+  if (prevProps.toolInvocation.state === 'result' && nextProps.toolInvocation.state === 'result') {
+    return (
+      basicPropsMatch &&
+      JSON.stringify((prevProps.toolInvocation as ResultToolInvocation).result) ===
+        JSON.stringify((nextProps.toolInvocation as ResultToolInvocation).result)
+    );
+  }
+
+  // If not both in result state, just compare the basic properties
+  return basicPropsMatch;
 });

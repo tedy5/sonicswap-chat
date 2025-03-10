@@ -93,7 +93,7 @@ export function Chat({ userId, initialMessages, isAuthenticated }: ChatProps) {
 
   const clearMessages = useCallback(() => {
     setMessages([]);
-    setVisibleMessagesCount(50);
+    setVisibleMessagesCount(20);
   }, [setMessages]);
 
   const isWaitingForResponse = useCallback(() => {
@@ -119,7 +119,10 @@ export function Chat({ userId, initialMessages, isAuthenticated }: ChatProps) {
     if (lastMessage.role === 'assistant') {
       const hasContent = !!lastMessage.content;
       const hasToolInvocationContent = lastMessage.toolInvocations?.some(
-        (tool) => tool.state === 'result' && tool.result && 'content' in tool.result && !!tool.result.content
+        (tool) =>
+          tool.state === 'result' &&
+          tool.result &&
+          (('content' in tool.result && !!tool.result.content) || ('message' in tool.result && !!tool.result.message))
       );
 
       // More detailed logging
@@ -252,10 +255,13 @@ export function Chat({ userId, initialMessages, isAuthenticated }: ChatProps) {
 
         // Check if there's any tool invocation with content
         const hasToolInvocationContent = message.toolInvocations?.some(
-          (tool) => tool.state === 'result' && tool.result && 'content' in tool.result && !!tool.result.content
+          (tool) =>
+            tool.state === 'result' &&
+            tool.result &&
+            (('content' in tool.result && !!tool.result.content) || ('message' in tool.result && !!tool.result.message))
         );
 
-        // Skip empty messages that aren't waiting and don't have tool invocation content
+        // Then update the check that uses this variable
         if (!message.content && (!message.toolInvocations || message.toolInvocations.length === 0 || !hasToolInvocationContent)) {
           return null;
         }
