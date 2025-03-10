@@ -128,6 +128,22 @@ export async function checkOrderExists(userId: string, orderId: string): Promise
   }
 }
 
+export async function storeTradingStrategy(
+  userId: string,
+  tokenIn: string,
+  tokenOut: string,
+  tradingStrategy: object
+): Promise<void> {
+  const { error } = await supabase.from('pending_trading_strategies').insert({
+    user_id: userId,
+    token_in: tokenIn.toLowerCase(),
+    token_out: tokenOut.toLowerCase(),
+    strategy: tradingStrategy,
+  });
+
+  if (error) throw error;
+}
+
 function formatAmount(amount: bigint, decimals: number = 18): string {
   return (Number(amount) / Math.pow(10, decimals)).toFixed(4);
 }

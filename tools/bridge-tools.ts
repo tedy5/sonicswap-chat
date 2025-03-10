@@ -170,7 +170,8 @@ export const bridgeTool = tool({
         }
         return {
           type: 'system',
-          message: 'failed',
+          message: 'Bridge service is temporarily unavailable. Please try again later.',
+          shouldAbort: true,
         };
       }
 
@@ -180,7 +181,14 @@ export const bridgeTool = tool({
         data,
       });
 
-      const message = await sendStreamUpdate(session.userId, 'Generating modal for you to bridge tokens', false);
+      const message = await sendStreamUpdate(
+        session.userId,
+        'Notify the user to use the modal below to bridge tokens',
+        false,
+        0,
+        true,
+        'stream'
+      );
 
       // Return combined response with both quote and transaction details
       return {
@@ -204,10 +212,9 @@ export const bridgeTool = tool({
         params,
       });
 
-      await sendStreamUpdate(session.userId, 'Bridge service is temporarily unavailable. Please try again later.');
       return {
         type: 'system',
-        message: 'error',
+        message: 'Bridge service is temporarily unavailable. Please try again later.',
       };
     }
   },

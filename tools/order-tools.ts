@@ -7,7 +7,7 @@ import { wAddress } from '@/config/contracts';
 import type { SessionData } from '@/types/session';
 import { getContractBalance } from '@/utils/balances';
 import { cancelLimitOrder, createLimitOrder } from '@/utils/contract-operations';
-import { checkOrderExists, getUserActiveOrders } from '@/utils/orders';
+import { checkOrderExists, getUserActiveOrders, storeTradingStrategy } from '@/utils/orders';
 import { getTokenAddress } from '@/utils/tokenAddress';
 import { getTokenDecimals } from '@/utils/tokenDecimals';
 import { getTokenSymbol } from '@/utils/tokenSymbol';
@@ -22,12 +22,14 @@ const limitOrderParamsSchema = z.object({
   toToken: z
     .string()
     .describe('Token address or symbol you are receiving (e.g. "S", "USDC", "USDT" or any other symbol)'),
-  fromAmount: z.string().describe('Amount of fromToken to spend (in human readable units)'),
-  price: z.string().describe('At what price the order should be executed at'),
+  amount: z.string().describe('Amount of fromToken you want to spend (in human readable units)'),
+  price: z.string().describe('Price at which to execute the order (in toToken per fromToken)'),
   tradingStrategy: z
     .string()
     .optional()
-    .describe('If user requested the next step, then write it here with future limit price, otherwise leve it empty'),
+    .describe(
+      'If user requested the next step, then write it here. Strategy must include prices for two steps ahead (e.g. when fulfilled, set new buy limit order at x.xx, and afterwards sell order at x.xx)'
+    ),
 });
 
 export const submitLimitOrderTool = tool({
@@ -79,22 +81,68 @@ export const submitLimitOrderTool = tool({
       const fromDecimals = await getTokenDecimals(chainId, fromTokenAddress as Address);
       const toDecimals = await getTokenDecimals(chainId, toTokenAddress as Address);
 
-      // Convert amount to base units
-      const amountIn = parseUnits(params.fromAmount, fromDecimals).toString();
+      let amountIn: string;
+      let minAmountOut: string;
 
-      // Calculate minimum amount out based on price
-      const minAmountOut = parseUnits(
-        (Number(params.fromAmount) * Number(params.price)).toString(),
-        toDecimals
-      ).toString();
+      if (params.direction === 'sell') {
+        // SELL: User is selling fromToken for toToken
+        // amountIn = amount of fromToken to sell
+        // minAmountOut = amount * price (minimum toToken to receive)
+        amountIn = parseUnits(params.amount, fromDecimals).toString();
+        const expectedOutput = Number(params.amount) * Number(params.price);
+        minAmountOut = parseUnits(expectedOutput.toString(), toDecimals).toString();
 
-      // Check contract balance
-      const contractBalance = await getContractBalance(session.address as Address, fromTokenAddress as Address);
-      if (!contractBalance || contractBalance.amount < BigInt(amountIn)) {
-        const fromSymbol =
-          fromTokenAddress === wAddress ? 'S' : await getTokenSymbol(chainId, fromTokenAddress as Address);
-        const content = `Insufficient balance. You have ${formatUnits(contractBalance?.amount || 0n, fromDecimals)} ${fromSymbol} in the contract. Please deposit more tokens first.`;
-        return { success: false, content };
+        // Check contract balance for fromToken
+        const contractBalance = await getContractBalance(session.address as Address, fromTokenAddress as Address);
+        if (!contractBalance || contractBalance.amount < BigInt(amountIn)) {
+          const fromSymbol =
+            fromTokenAddress === wAddress ? 'S' : await getTokenSymbol(chainId, fromTokenAddress as Address);
+          return {
+            success: false,
+            content: `Insufficient balance. You have ${formatUnits(contractBalance?.amount || 0n, fromDecimals)} ${fromSymbol} in the contract. Please deposit more tokens first.`,
+          };
+        }
+      } else {
+        // BUY: User is buying toToken with fromToken
+        // For a buy order with our new approach:
+        // - amount = how much fromToken the user wants to spend
+        // - price = price of 1 toToken in terms of fromToken
+
+        // The amount of fromToken to spend is directly the amount parameter
+        amountIn = parseUnits(params.amount, fromDecimals).toString();
+
+        // Calculate how much toToken we expect to receive (amount / price)
+        const expectedOutput = Number(params.amount) / Number(params.price);
+        minAmountOut = parseUnits(expectedOutput.toString(), toDecimals).toString();
+
+        // Check contract balance for fromToken
+        const contractBalance = await getContractBalance(session.address as Address, fromTokenAddress as Address);
+        if (!contractBalance || contractBalance.amount < BigInt(amountIn)) {
+          const fromSymbol =
+            fromTokenAddress === wAddress ? 'S' : await getTokenSymbol(chainId, fromTokenAddress as Address);
+          return {
+            success: false,
+            content: `Insufficient balance. You need ${formatUnits(BigInt(amountIn), fromDecimals)} ${fromSymbol} but you have ${formatUnits(contractBalance?.amount || 0n, fromDecimals)} in the contract. Please deposit more tokens first.`,
+          };
+        }
+      }
+
+      const fromSymbol =
+        fromTokenAddress === wAddress ? 'S' : await getTokenSymbol(chainId, fromTokenAddress as Address);
+      const toSymbol = toTokenAddress === wAddress ? 'S' : await getTokenSymbol(chainId, toTokenAddress as Address);
+
+      if (params.tradingStrategy) {
+        // Store more context with the strategy
+        await storeTradingStrategy(session.userId, fromTokenAddress, toTokenAddress, {
+          strategy: params.tradingStrategy,
+          originalOrderDetails: {
+            direction: params.direction,
+            fromToken: fromSymbol,
+            toToken: toSymbol,
+            amount: params.amount,
+            price: params.price,
+          },
+        });
       }
 
       const limitOrderResult = await createLimitOrder(
@@ -109,6 +157,7 @@ export const submitLimitOrderTool = tool({
         success: limitOrderResult.success,
       };
     } catch (error) {
+      console.log('ERROR: ', error);
       const content = `Sorry, there was an error submitting your limit order: ${error instanceof Error ? error.message : 'Unknown error'}`;
       return { success: false, content };
     }
